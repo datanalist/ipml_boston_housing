@@ -5,6 +5,10 @@ models/
 data/
 minio_data/
 
+# Но НЕ игнорируем .dvc файлы (метаданные DVC должны быть в git)
+!**/*.dvc
+!**/.gitignore
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

@@ -47,7 +47,20 @@ docker-compose up -d minio
 
 ### Способ 2: Напрямую через Docker
 
+```powershell
+# Windows PowerShell
+docker run -d `
+  --name boston_housing_minio `
+  -p 9000:9000 `
+  -p 9001:9001 `
+  -v ${PWD}/minio_data:/data `
+  -e MINIO_ROOT_USER=minioadmin0 `
+  -e MINIO_ROOT_PASSWORD=minioadmin1230 `
+  minio/minio server /data --console-address ":9001"
+```
+
 ```bash
+# Linux/macOS
 docker run -d \
   --name boston_housing_minio \
   -p 9000:9000 \
@@ -111,10 +124,10 @@ mc mb local/boston-housing-data
 mc ls local
 ```
 
-### Рекомендуемая структура бакетов
+### Структура локальных данных
 
 ```
-boston-housing-data/
+minio_data/
 ├── raw/              # Исходные данные
 ├── processed/        # Обработанные данные
 ├── models/           # Обученные модели
@@ -189,18 +202,18 @@ git commit -m "feat: настройка DVC с MinIO хранилищем"
 
 ```bash
 # Добавить файл данных
-dvc add data/raw/housing.csv
+dvc add minio_data/raw/housing.csv
 
-# Добавить директорию
-dvc add data/processed/
+# Добавить всю директорию
+dvc add minio_data/processed
 
 # Добавить модель
-dvc add models/random_forest.pkl
+dvc add minio_data/models/random_forest.pkl
 ```
 
 После добавления появятся файлы `.dvc`:
-- `data/raw/housing.csv.dvc` — метаданные для DVC
-- Оригинальный файл добавится в `.gitignore`
+- `minio_data/raw/housing.csv.dvc` — метаданные для DVC
+- Оригинальный файл добавится в локальный `.gitignore`
 
 ### Отправка данных в хранилище
 
@@ -209,7 +222,7 @@ dvc add models/random_forest.pkl
 dvc push
 
 # Отправить конкретный файл
-dvc push data/raw/housing.csv.dvc
+dvc push minio_data/raw/housing.csv.dvc
 ```
 
 ### Получение данных из хранилища
@@ -219,7 +232,7 @@ dvc push data/raw/housing.csv.dvc
 dvc pull
 
 # Скачать конкретный файл
-dvc pull data/raw/housing.csv.dvc
+dvc pull minio_data/raw/housing.csv.dvc
 ```
 
 ### Проверка статуса
@@ -251,12 +264,12 @@ dvc checkout
 ### Сценарий 1: Первоначальная загрузка данных
 
 ```bash
-# 1. Скачайте датасет и поместите в data/raw/
+# 1. Скачайте датасет и поместите в minio_data/raw/
 # 2. Добавьте под контроль DVC
-dvc add data/raw/housing.csv
+dvc add minio_data/raw/housing.csv
 
 # 3. Закоммитьте .dvc файл
-git add data/raw/housing.csv.dvc data/raw/.gitignore
+git add minio_data/raw/housing.csv.dvc minio_data/raw/.gitignore
 git commit -m "data: добавлен исходный датасет Boston Housing"
 
 # 4. Отправьте данные в MinIO
@@ -268,10 +281,10 @@ dvc push
 ```bash
 # 1. Обновите файл данных
 # 2. Пересчитайте хеш DVC
-dvc add data/raw/housing.csv
+dvc add minio_data/raw/housing.csv
 
 # 3. Закоммитьте изменения
-git add data/raw/housing.csv.dvc
+git add minio_data/raw/housing.csv.dvc
 git commit -m "data: обновлён датасет"
 
 # 4. Отправьте новую версию
@@ -281,11 +294,11 @@ dvc push
 ### Сценарий 3: Сохранение обученной модели
 
 ```bash
-# 1. После обучения модели
-dvc add models/best_model.pkl
+# 1. После обучения модели сохраните в minio_data/models/
+dvc add minio_data/models/best_model.pkl
 
 # 2. Закоммитьте
-git add models/best_model.pkl.dvc models/.gitignore
+git add minio_data/models/best_model.pkl.dvc minio_data/models/.gitignore
 git commit -m "model: добавлена лучшая модель RandomForest (R²=0.87)"
 
 # 3. Отправьте в хранилище
@@ -313,11 +326,11 @@ dvc pull
 
 ```bash
 # Найти нужный коммит
-git log --oneline data/raw/housing.csv.dvc
+git log --oneline minio_data/raw/housing.csv.dvc
 
 # Откатиться к версии
-git checkout <commit-hash> -- data/raw/housing.csv.dvc
-dvc checkout data/raw/housing.csv.dvc
+git checkout <commit-hash> -- minio_data/raw/housing.csv.dvc
+dvc checkout minio_data/raw/housing.csv.dvc
 
 # Или полный откат всего проекта
 git checkout <commit-hash>
@@ -394,8 +407,23 @@ curl -I http://localhost:9000
 **Решения**:
 ```bash
 # Удалите из отслеживания и добавьте заново
-dvc remove data/raw/housing.csv.dvc
-dvc add data/raw/housing.csv
+dvc remove minio_data/raw/housing.csv.dvc
+dvc add minio_data/raw/housing.csv
+```
+
+### Файл .dvc игнорируется git
+
+**Симптом**: `ERROR: bad DVC file name '...' is git-ignored`
+
+**Решения**:
+Убедитесь, что в `.gitignore` есть исключения для `.dvc` файлов:
+```gitignore
+# Data files
+minio_data/
+
+# Но НЕ игнорируем .dvc файлы
+!**/*.dvc
+!**/.gitignore
 ```
 
 ---
@@ -428,11 +456,10 @@ dvc remote modify minio secret_access_key minioadmin1230
 dvc remote modify minio use_ssl false
 
 # 4. Добавление данных
-dvc add data/raw/housing.csv
-git add data/raw/housing.csv.dvc .dvc/config
+dvc add minio_data/raw/housing.csv
+git add minio_data/raw/housing.csv.dvc .dvc/config
 git commit -m "feat: настройка DVC + MinIO, добавлены данные"
 dvc push
 
 # Готово! 🎉
 ```
-
