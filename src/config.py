@@ -10,17 +10,17 @@ load_dotenv()
 PROJ_ROOT = Path(__file__).resolve().parents[1]
 logger.info(f"PROJ_ROOT path is: {PROJ_ROOT}")
 
-# MinIO Data directories (версионируются через DVC)
-MINIO_DATA_DIR = PROJ_ROOT / "minio_data"
-RAW_DATA_DIR = MINIO_DATA_DIR / "raw"
-PROCESSED_DATA_DIR = MINIO_DATA_DIR / "processed"
-MODELS_DIR = MINIO_DATA_DIR / "models"
-EXPERIMENTS_DIR = MINIO_DATA_DIR / "experiments"
-
-# Legacy data directories
+# Data directories (версионируются через DVC)
 DATA_DIR = PROJ_ROOT / "data"
+RAW_DATA_DIR = DATA_DIR / "raw"
+PROCESSED_DATA_DIR = DATA_DIR / "processed"
+MODELS_DIR = DATA_DIR / "models"
+EXPERIMENTS_DIR = DATA_DIR / "experiments"
 INTERIM_DATA_DIR = DATA_DIR / "interim"
 EXTERNAL_DATA_DIR = DATA_DIR / "external"
+
+# MinIO storage (внутреннее хранилище)
+MINIO_DATA_DIR = PROJ_ROOT / "minio_data"
 
 REPORTS_DIR = PROJ_ROOT / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"

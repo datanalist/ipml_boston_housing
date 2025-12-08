@@ -1,1 +1,1 @@
-from boston_housing import config  # noqa: F401
+"""Boston Housing ML Project."""
