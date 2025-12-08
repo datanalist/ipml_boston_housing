@@ -1,0 +1,7 @@
+[core]
+    remote = minio
+['remote "minio"']
+    url = s3://boston-housing-data
+    access_key_id = minioadmin0
+    secret_access_key = minioadmin1230
+    use_ssl = false

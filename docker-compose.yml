@@ -1,0 +1,31 @@
+# Docker Compose для ML инфраструктуры проекта Boston Housing
+# Запуск из папки docker: docker-compose up -d
+# Или из корня проекта: docker-compose -f docker/docker-compose.yml up -d
+
+services:
+  minio:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile
+    container_name: boston_housing_minio
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Web Console
+    volumes:
+      - ../minio_data:/data
+    environment:
+      - MINIO_ROOT_USER=minioadmin0
+      - MINIO_ROOT_PASSWORD=minioadmin1230
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - boston_housing_network
+
+networks:
+  boston_housing_network:
+    driver: bridge
