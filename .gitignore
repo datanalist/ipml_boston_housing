@@ -1,15 +1,17 @@
-# ML model files
-models/
+# ML model files (только корневая папка models/)
+/models/
 
-# Data files - игнорируем содержимое, но не саму папку
+# MinIO storage
+minio_data/
+
+# Data files - игнорируем содержимое, но не саму папку и .dvc файлы
 data/**
 !data/
+!data/*/
 !data/*.dvc
 !data/**/*.dvc
 !data/.gitignore
 !data/**/.gitignore
-
-minio_data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
