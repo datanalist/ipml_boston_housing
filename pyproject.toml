@@ -10,4 +10,9 @@ dependencies = [
     "dvc-gdrive>=3.0.1",
     "pre-commit>=4.5.0",
     "ruff>=0.14.6",
+    "numpy>=2.3.5",
+    "pandas>=2.3.3",
+    "dvclive>=3.49.0",
+    "loguru>=0.7.3",
+    "scikit-learn>=1.7.2",
 ]

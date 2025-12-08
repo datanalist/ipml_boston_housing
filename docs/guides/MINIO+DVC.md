@@ -38,37 +38,11 @@
 - Установленный [Docker](https://www.docker.com/products/docker-desktop/)
 - Docker Compose
 
-### Способ 1: Через Docker Compose (рекомендуется)
+### Через Docker Compose (рекомендуется)
 
 ```bash
 # Из корневой директории проекта
 docker-compose up -d minio
-```
-
-### Способ 2: Напрямую через Docker
-
-```powershell
-# Windows PowerShell
-docker run -d `
-  --name boston_housing_minio `
-  -p 9000:9000 `
-  -p 9001:9001 `
-  -v ${PWD}/minio_data:/data `
-  -e MINIO_ROOT_USER=minioadmin0 `
-  -e MINIO_ROOT_PASSWORD=minioadmin1230 `
-  minio/minio server /data --console-address ":9001"
-```
-
-```bash
-# Linux/macOS
-docker run -d \
-  --name boston_housing_minio \
-  -p 9000:9000 \
-  -p 9001:9001 \
-  -v ./minio_data:/data \
-  -e MINIO_ROOT_USER=minioadmin0 \
-  -e MINIO_ROOT_PASSWORD=minioadmin1230 \
-  minio/minio server /data --console-address ":9001"
 ```
 
 ### Проверка запуска
@@ -124,15 +98,23 @@ mc mb local/boston-housing-data
 mc ls local
 ```
 
-### Структура локальных данных
+### Структура данных проекта
 
 ```
-minio_data/
-├── raw/              # Исходные данные
-├── processed/        # Обработанные данные
-├── models/           # Обученные модели
-└── experiments/      # Артефакты экспериментов
+data/                    # Данные под контролем DVC (в git игнорируется)
+├── raw/                 # Исходные данные
+│   └── housing.csv
+├── processed/           # Обработанные данные  
+├── models/              # Обученные модели
+├── experiments/         # Артефакты экспериментов
+└── raw.dvc              # DVC-файл для отслеживания raw/
+
+minio_data/              # Локальное хранилище MinIO (монтируется в контейнер)
+└── boston-housing-data/ # Bucket с данными DVC
+    └── files/md5/...    # Данные в content-addressable формате
 ```
+
+> ⚠️ **Важно**: DVC хранит файлы не с оригинальными именами, а по их MD5-хешам в структуре `files/md5/XX/YYYYYY...`. Это нормальное поведение.
 
 ---
 
@@ -201,19 +183,19 @@ git commit -m "feat: настройка DVC с MinIO хранилищем"
 ### Добавление файлов под версионирование
 
 ```bash
-# Добавить файл данных
-dvc add minio_data/raw/housing.csv
+# Добавить директорию данных
+dvc add data/raw
 
-# Добавить всю директорию
-dvc add minio_data/processed
+# Добавить отдельный файл
+dvc add data/raw/housing.csv
 
 # Добавить модель
-dvc add minio_data/models/random_forest.pkl
+dvc add data/models/random_forest.pkl
 ```
 
 После добавления появятся файлы `.dvc`:
-- `minio_data/raw/housing.csv.dvc` — метаданные для DVC
-- Оригинальный файл добавится в локальный `.gitignore`
+- `data/raw.dvc` — метаданные для DVC
+- Оригинальные файлы добавятся в `.gitignore`
 
 ### Отправка данных в хранилище
 
@@ -221,8 +203,11 @@ dvc add minio_data/models/random_forest.pkl
 # Отправить все отслеживаемые данные
 dvc push
 
+# С подробным выводом для диагностики
+dvc push -v
+
 # Отправить конкретный файл
-dvc push minio_data/raw/housing.csv.dvc
+dvc push data/raw.dvc
 ```
 
 ### Получение данных из хранилища
@@ -232,7 +217,7 @@ dvc push minio_data/raw/housing.csv.dvc
 dvc pull
 
 # Скачать конкретный файл
-dvc pull minio_data/raw/housing.csv.dvc
+dvc pull data/raw.dvc
 ```
 
 ### Проверка статуса
@@ -241,8 +226,21 @@ dvc pull minio_data/raw/housing.csv.dvc
 # Статус локальных изменений
 dvc status
 
-# Сравнение с remote
-dvc status --remote
+# Сравнение локального кэша с remote
+dvc status -c
+
+# Сравнение с конкретным remote
+dvc status -c -r minio
+```
+
+### Просмотр отслеживаемых файлов
+
+```bash
+# Найти все .dvc файлы в проекте (PowerShell)
+Get-ChildItem -Recurse -Filter "*.dvc"
+
+# Или через dvc
+dvc data status
 ```
 
 ### Работа с версиями
@@ -264,12 +262,12 @@ dvc checkout
 ### Сценарий 1: Первоначальная загрузка данных
 
 ```bash
-# 1. Скачайте датасет и поместите в minio_data/raw/
+# 1. Скачайте датасет и поместите в data/raw/
 # 2. Добавьте под контроль DVC
-dvc add minio_data/raw/housing.csv
+dvc add data/raw
 
 # 3. Закоммитьте .dvc файл
-git add minio_data/raw/housing.csv.dvc minio_data/raw/.gitignore
+git add data/raw.dvc data/.gitignore
 git commit -m "data: добавлен исходный датасет Boston Housing"
 
 # 4. Отправьте данные в MinIO
@@ -279,12 +277,12 @@ dvc push
 ### Сценарий 2: Обновление данных
 
 ```bash
-# 1. Обновите файл данных
+# 1. Обновите файлы в data/raw/
 # 2. Пересчитайте хеш DVC
-dvc add minio_data/raw/housing.csv
+dvc add data/raw
 
 # 3. Закоммитьте изменения
-git add minio_data/raw/housing.csv.dvc
+git add data/raw.dvc
 git commit -m "data: обновлён датасет"
 
 # 4. Отправьте новую версию
@@ -294,11 +292,11 @@ dvc push
 ### Сценарий 3: Сохранение обученной модели
 
 ```bash
-# 1. После обучения модели сохраните в minio_data/models/
-dvc add minio_data/models/best_model.pkl
+# 1. После обучения модели сохраните в data/models/
+dvc add data/models/best_model.pkl
 
 # 2. Закоммитьте
-git add minio_data/models/best_model.pkl.dvc minio_data/models/.gitignore
+git add data/models/best_model.pkl.dvc data/models/.gitignore
 git commit -m "model: добавлена лучшая модель RandomForest (R²=0.87)"
 
 # 3. Отправьте в хранилище
@@ -315,10 +313,14 @@ cd ipml_boston_housing
 # 2. Установить зависимости
 uv sync
 
-# 3. Запустить MinIO (или подключиться к общему)
+# 3. Запустить MinIO
 docker-compose up -d minio
 
-# 4. Скачать все данные
+# 4. Создать bucket (если не существует)
+mc alias set local http://localhost:9000 minioadmin0 minioadmin1230
+mc mb local/boston-housing-data --ignore-existing
+
+# 5. Скачать все данные
 dvc pull
 ```
 
@@ -326,11 +328,11 @@ dvc pull
 
 ```bash
 # Найти нужный коммит
-git log --oneline minio_data/raw/housing.csv.dvc
+git log --oneline data/raw.dvc
 
 # Откатиться к версии
-git checkout <commit-hash> -- minio_data/raw/housing.csv.dvc
-dvc checkout minio_data/raw/housing.csv.dvc
+git checkout <commit-hash> -- data/raw.dvc
+dvc checkout data/raw.dvc
 
 # Или полный откат всего проекта
 git checkout <commit-hash>
@@ -340,6 +342,33 @@ dvc checkout
 ---
 
 ## Устранение неполадок
+
+### "Everything is up to date" но данных нет в MinIO
+
+**Причины**:
+1. Bucket не создан в MinIO
+2. Данные уже были загружены ранее
+3. DVC файлы не закоммичены в git
+
+**Решения**:
+```bash
+# 1. Проверьте, создан ли bucket
+mc ls local/boston-housing-data
+
+# 2. Если bucket не существует — создайте
+mc mb local/boston-housing-data
+
+# 3. Проверьте статус с cloud
+dvc status -c
+
+# 4. Убедитесь что .dvc файлы закоммичены
+git status
+git add data/*.dvc
+git commit -m "Track data with DVC"
+
+# 5. Повторите push с verbose
+dvc push -v
+```
 
 ### Ошибка подключения к MinIO
 
@@ -384,20 +413,24 @@ mc mb local/boston-housing-data
 # Или через веб-консоль http://localhost:9001
 ```
 
-### DVC push завис
+### DVC не видит отслеживаемые файлы
 
-**Симптом**: Команда `dvc push` долго выполняется
+**Симптом**: `dvc status` показывает "There are no data or pipelines tracked"
+
+**Причина**: Файлы `.dvc` не закоммичены в git или игнорируются
 
 **Решения**:
 ```bash
-# Проверьте размер файлов
-dvc status
+# 1. Проверьте, есть ли .dvc файлы
+Get-ChildItem -Recurse -Filter "*.dvc"
 
-# Используйте verbose режим для диагностики
-dvc push -v
+# 2. Убедитесь что они не в .gitignore
+# В .gitignore должно быть:
+# !**/*.dvc
 
-# Проверьте сетевое подключение к MinIO
-curl -I http://localhost:9000
+# 3. Добавьте .dvc файлы в git
+git add data/raw.dvc
+git commit -m "Track data with DVC"
 ```
 
 ### Конфликт версий файлов
@@ -407,8 +440,8 @@ curl -I http://localhost:9000
 **Решения**:
 ```bash
 # Удалите из отслеживания и добавьте заново
-dvc remove minio_data/raw/housing.csv.dvc
-dvc add minio_data/raw/housing.csv
+dvc remove data/raw.dvc
+dvc add data/raw
 ```
 
 ### Файл .dvc игнорируется git
@@ -419,6 +452,7 @@ dvc add minio_data/raw/housing.csv
 Убедитесь, что в `.gitignore` есть исключения для `.dvc` файлов:
 ```gitignore
 # Data files
+data/
 minio_data/
 
 # Но НЕ игнорируем .dvc файлы
@@ -447,7 +481,7 @@ docker-compose up -d minio
 mc alias set local http://localhost:9000 minioadmin0 minioadmin1230
 mc mb local/boston-housing-data
 
-# 3. Настройка DVC
+# 3. Настройка DVC (если ещё не настроен)
 dvc init
 dvc remote add -d minio s3://boston-housing-data
 dvc remote modify minio endpointurl http://localhost:9000
@@ -456,10 +490,45 @@ dvc remote modify minio secret_access_key minioadmin1230
 dvc remote modify minio use_ssl false
 
 # 4. Добавление данных
-dvc add minio_data/raw/housing.csv
-git add minio_data/raw/housing.csv.dvc .dvc/config
+dvc add data/raw
+git add data/raw.dvc .dvc/config
 git commit -m "feat: настройка DVC + MinIO, добавлены данные"
 dvc push
 
 # Готово! 🎉
+```
+
+---
+
+## 🔧 Конфигурация проекта
+
+### docker-compose.yml
+
+```yaml
+services:
+  minio:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile
+    container_name: boston_housing_minio
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Web Console
+    volumes:
+      - ./minio_data:/data
+    environment:
+      - MINIO_ROOT_USER=minioadmin0
+      - MINIO_ROOT_PASSWORD=minioadmin1230
+```
+
+### .gitignore (важные строки)
+
+```gitignore
+# Data files
+data/
+minio_data/
+
+# Но НЕ игнорируем .dvc файлы
+!**/*.dvc
+!**/.gitignore
 ```

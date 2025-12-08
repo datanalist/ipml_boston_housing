@@ -1,6 +1,5 @@
 # Docker Compose для ML инфраструктуры проекта Boston Housing
-# Запуск из папки docker: docker-compose up -d
-# Или из корня проекта: docker-compose -f docker/docker-compose.yml up -d
+# Запуск из корня проекта: docker-compose up -d
 
 services:
   minio:
@@ -12,7 +11,7 @@ services:
       - "9000:9000"   # S3 API
       - "9001:9001"   # Web Console
     volumes:
-      - ../minio_data:/data
+      - ./minio_data:/data
     environment:
       - MINIO_ROOT_USER=minioadmin0
       - MINIO_ROOT_PASSWORD=minioadmin1230
