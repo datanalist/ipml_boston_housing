@@ -1,0 +1,5 @@
+.dvc
+data/
+minio_data/
+src/
+.env
