@@ -16,4 +16,5 @@ dependencies = [
     "loguru>=0.7.3",
     "scikit-learn>=1.7.2",
     "click>=8.3.1",
+    "dvc-s3>=3.2.2",
 ]
