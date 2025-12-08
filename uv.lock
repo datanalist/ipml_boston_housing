@@ -1120,6 +1120,7 @@ name = "ipml-boston-housing"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "click" },
     { name = "cookiecutter-data-science" },
     { name = "dvc", extra = ["s3"] },
     { name = "dvc-gdrive" },
@@ -1134,6 +1135,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "click", specifier = ">=8.3.1" },
     { name = "cookiecutter-data-science", specifier = ">=2.3.0" },
     { name = "dvc", extras = ["s3"], specifier = ">=3.64.2" },
     { name = "dvc-gdrive", specifier = ">=3.0.1" },

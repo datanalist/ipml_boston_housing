@@ -15,4 +15,5 @@ dependencies = [
     "dvclive>=3.49.0",
     "loguru>=0.7.3",
     "scikit-learn>=1.7.2",
+    "click>=8.3.1",
 ]
