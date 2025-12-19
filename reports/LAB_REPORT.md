@@ -345,6 +345,117 @@ dvc exp diff <exp1> <exp2>
 dvc metrics show
 ```
 
+### 3.6 Загрузчик моделей (Model Loader)
+
+Модуль `src/ml_models/model_loader.py` предоставляет унифицированный интерфейс для создания, сохранения и загрузки моделей регрессии scikit-learn.
+
+#### Расположение моделей
+
+Все модели сохраняются в каталог **`data/models/`** в формате pickle (`.pkl`):
+
+```
+data/models/
+├── random_forest.pkl       # Случайный лес
+├── gradient_boosting.pkl   # Градиентный бустинг
+├── ridge.pkl               # Ridge-регрессия
+├── lasso.pkl               # Lasso-регрессия
+└── ...                     # Другие модели
+```
+
+#### Доступные модели (14 моделей)
+
+| Категория | Модель | Описание |
+|-----------|--------|----------|
+| **Линейные** | `linear_regression` | Обычная линейная регрессия (МНК) |
+| | `ridge` | L2-регуляризация |
+| | `lasso` | L1-регуляризация |
+| | `elastic_net` | L1+L2 регуляризация |
+| | `huber` | Робастная регрессия (устойчива к выбросам) |
+| | `sgd` | Стохастический градиентный спуск |
+| **Деревья/Ансамбли** | `decision_tree` | Дерево решений |
+| | `random_forest` | Случайный лес |
+| | `extra_trees` | Экстремально рандомизированные деревья |
+| | `gradient_boosting` | Градиентный бустинг |
+| | `adaboost` | AdaBoost регрессор |
+| | `bagging` | Бэггинг регрессор |
+| **Другие** | `svr` | Метод опорных векторов |
+| | `knn` | K ближайших соседей |
+
+#### CLI-команды
+
+```bash
+# Список всех доступных моделей
+python src/ml_models/model_loader.py list
+
+# Создать одну модель
+python src/ml_models/model_loader.py create random_forest
+
+# Создать все модели сразу
+python src/ml_models/model_loader.py create --all
+
+# Информация о модели (параметры по умолчанию)
+python src/ml_models/model_loader.py info gradient_boosting
+
+# Указать альтернативный каталог для сохранения
+python src/ml_models/model_loader.py create random_forest -o /path/to/models
+```
+
+#### Программное использование
+
+```python
+from src.ml_models.model_loader import (
+    create_model,
+    save_model,
+    load_model,
+    create_all_models,
+    load_all_models,
+    get_available_models,
+)
+
+# Получить список доступных моделей
+models = get_available_models()
+# ['linear_regression', 'ridge', 'lasso', ...]
+
+# Создать модель с параметрами по умолчанию
+model = create_model("random_forest")
+
+# Создать модель с кастомными параметрами
+model = create_model("random_forest", custom_params={
+    "n_estimators": 200,
+    "max_depth": 15
+})
+
+# Сохранить модель в data/models/
+save_model(model, "my_random_forest")
+
+# Загрузить сохранённую модель
+model = load_model("random_forest")
+
+# Создать и сохранить все модели сразу
+all_models = create_all_models()
+
+# Загрузить все модели из каталога
+all_models = load_all_models()
+```
+
+#### Версионирование моделей через DVC
+
+После создания моделей их можно версионировать через DVC:
+
+```bash
+# Создать все модели
+python src/ml_models/model_loader.py create --all
+
+# Добавить в DVC
+dvc add data/models
+
+# Отправить в MinIO
+dvc push
+
+# На другой машине — загрузить модели
+dvc pull
+```
+
 ---
 
 ## 4. Воспроизводимость (Docker)
@@ -581,6 +692,12 @@ make test               # Запуск тестов
 | [`EXPERIMENTS.md`](../docs/guides/EXPERIMENTS.md) | Запуск экспериментов |
 | [`DOCKER.md`](../docs/guides/DOCKER.md) | Работа с Docker |
 | [`PRE-COMMIT.md`](../docs/guides/PRE-COMMIT.md) | Настройка pre-commit |
+
+**Модули:**
+
+| Файл | Описание |
+|------|----------|
+| [`src/ml_models/model_loader.py`](../src/ml_models/model_loader.py) | Загрузчик моделей регрессии (14 моделей scikit-learn) |
 
 ---
 
