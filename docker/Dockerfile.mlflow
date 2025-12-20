@@ -1,0 +1,24 @@
+# Используем локально собранный образ (без сетевых запросов)
+FROM ipml_boston_housing-mlflow:latest
+
+# Установка gettext для envsubst
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gettext-base \
+    && rm -rf /var/lib/apt/lists/*
+
+# Создание директорий
+RUN mkdir -p /mlflow/data /mlflow/config
+
+WORKDIR /mlflow
+
+# Копируем entrypoint скрипт
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Порт MLflow
+EXPOSE 5000
+
+# Entrypoint подставляет переменные и запускает MLflow
+ENTRYPOINT ["/entrypoint.sh"]
+

@@ -1,0 +1,14 @@
+[mlflow]
+# Права по умолчанию для новых пользователей: READ, EDIT, MANAGE, NO_PERMISSIONS
+default_permission = READ
+
+# База данных для хранения пользователей (внутри контейнера)
+database_uri = sqlite:////mlflow/data/auth.db
+
+# Учётные данные администратора (подставляются из .env через envsubst)
+admin_username = ${MLFLOW_ADMIN_USERNAME}
+admin_password = ${MLFLOW_ADMIN_PASSWORD}
+
+# Функция авторизации
+authorization_function = mlflow.server.auth:authenticate_request_basic_auth
+

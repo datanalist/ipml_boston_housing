@@ -28,6 +28,48 @@ services:
     networks:
       - boston_housing_network
 
+  # MLflow Tracking Server с аутентификацией
+  mlflow:
+    image: ipml_boston_housing-mlflow:v2
+    container_name: boston_housing_mlflow
+    ports:
+      - "5000:5000"
+    environment:
+      # Подключение к MinIO для артефактов
+      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
+      # Путь к конфигу аутентификации (генерируется из шаблона)
+      - MLFLOW_AUTH_CONFIG_PATH=/mlflow/config/basic_auth.ini
+      # Учётные данные администратора MLflow (из .env)
+      - MLFLOW_ADMIN_USERNAME=${MLFLOW_ADMIN_USERNAME}
+      - MLFLOW_ADMIN_PASSWORD=${MLFLOW_ADMIN_PASSWORD}
+    command: >
+      --app-name basic-auth
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:////mlflow/data/mlflow.db
+      --default-artifact-root s3://mlflow-artifacts/
+    volumes:
+      # Шаблон конфига аутентификации (envsubst подставит переменные)
+      - ./config/mlflow/basic_auth.ini.template:/mlflow/config/basic_auth.ini.template:ro
+      # Персистентное хранилище для БД
+      - mlflow_data:/mlflow/data
+    env_file:
+      - .env
+    depends_on:
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - boston_housing_network
+
   # ML Application - обучение модели Random Forest
   train:
     build:
@@ -48,6 +90,10 @@ services:
     # Не запускается автоматически (только по требованию)
     profiles:
       - train
+
+
+volumes:
+  mlflow_data:
 
 networks:
   boston_housing_network:

@@ -8,12 +8,13 @@
 2. [Установка и настройка](#установка-и-настройка)
 3. [Настройка MinIO для MLflow](#настройка-minio-для-mlflow)
 4. [Запуск MLflow Tracking Server](#запуск-mlflow-tracking-server)
-5. [Интеграция MLflow с кодом](#интеграция-mlflow-с-кодом)
-6. [Связка MLflow и DVC](#связка-mlflow-и-dvc)
-7. [Workflow: полный цикл эксперимента](#workflow-полный-цикл-эксперимента)
-8. [Примеры использования](#примеры-использования)
-9. [Сравнение MLflow и DVCLive](#сравнение-mlflow-и-dvclive)
-10. [Устранение неполадок](#устранение-неполадок)
+5. [Аутентификация и контроль доступа](#аутентификация-и-контроль-доступа)
+6. [Интеграция MLflow с кодом](#интеграция-mlflow-с-кодом)
+7. [Связка MLflow и DVC](#связка-mlflow-и-dvc)
+8. [Workflow: полный цикл эксперимента](#workflow-полный-цикл-эксперимента)
+9. [Примеры использования](#примеры-использования)
+10. [Сравнение MLflow и DVCLive](#сравнение-mlflow-и-dvclive)
+11. [Устранение неполадок](#устранение-неполадок)
 
 ---
 
@@ -180,7 +181,7 @@ mc ls local
 # [2024-XX-XX XX:XX:XX]     0B mlflow-artifacts/
 ```
 
-### Шаг 3: Настройка политик доступа (опционально)
+### Шаг 3: Настройка политик доступа в MinIO (опционально)
 
 Для production-окружения рекомендуется создать отдельного пользователя:
 
@@ -188,8 +189,10 @@ mc ls local
 # Создание пользователя для MLflow
 mc admin user add local mlflow_user mlflow_secret_password
 
-# Создание политики доступа
-cat > /tmp/mlflow-policy.json << 'EOF'
+# Создание файла политики доступа
+# Примечание: если mc установлен через snap, используйте ~/mlflow-policy.json
+# вместо /tmp/, т.к. snap не имеет доступа к /tmp
+cat > ~/mlflow-policy.json << 'EOF'
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -210,10 +213,19 @@ cat > /tmp/mlflow-policy.json << 'EOF'
 }
 EOF
 
-# Применение политики
-mc admin policy create local mlflow-policy /tmp/mlflow-policy.json
-mc admin policy attach local mlflow-policy --user mlflow_user
+# Добавление политики в MinIO (синтаксис для mc >= 2023)
+mc admin policy add local mlflow-policy ~/mlflow-policy.json
+
+# Назначение политики пользователю
+mc admin policy set local mlflow-policy user=mlflow_user
+
+# Проверка назначенных политик
+mc admin user info local mlflow_user
 ```
+
+> **Примечание**: Синтаксис команд `mc admin policy` зависит от версии MinIO Client.
+> - Старые версии: `mc admin policy create/attach`
+> - Новые версии (2023+): `mc admin policy add/set`
 
 ---
 
@@ -260,6 +272,569 @@ curl http://localhost:5000/health
 # Проверка API
 curl http://localhost:5000/api/2.0/mlflow/experiments/list
 ```
+
+---
+
+## Аутентификация и контроль доступа
+
+По умолчанию MLflow Tracking Server не требует аутентификации. Для production-окружения необходимо настроить защиту на нескольких уровнях.
+
+### Уровни защиты
+
+| Уровень | Компонент | Метод защиты |
+|---------|-----------|--------------|
+| 1 | MinIO (S3) | Access Key + Secret Key |
+| 2 | MLflow UI/API | Basic Auth / OAuth / Reverse Proxy |
+| 3 | Сеть | Firewall, VPN, приватная сеть |
+
+---
+
+### Вариант 1: MLflow с Basic Auth в Docker (рекомендуется)
+
+MLflow поддерживает встроенную аутентификацию начиная с версии 2.5+.
+
+> **Важно**: Образ `ubuntu/mlflow:2.1.1` слишком старый для auth. Нужно использовать кастомный образ или официальный `ghcr.io/mlflow/mlflow:v2.18.0`.
+
+---
+
+#### Шаг 1: Создание Dockerfile для MLflow с auth
+
+Создайте файл `docker/Dockerfile.mlflow`:
+
+```dockerfile
+FROM python:3.11-slim
+
+# Установка зависимостей
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Установка MLflow с auth и boto3 для S3
+RUN pip install --no-cache-dir \
+    mlflow[auth]==2.18.0 \
+    boto3 \
+    psycopg2-binary
+
+# Создание директории для данных
+RUN mkdir -p /mlflow/data
+
+WORKDIR /mlflow
+
+# Порт MLflow
+EXPOSE 5000
+
+# Точка входа
+ENTRYPOINT ["mlflow", "server"]
+```
+
+#### Шаг 2: Создание конфигурации basic_auth.ini
+
+Создайте директорию и файл `config/mlflow/basic_auth.ini`:
+
+```bash
+mkdir -p config/mlflow
+```
+
+```ini
+[mlflow]
+# Права по умолчанию для новых пользователей: READ, EDIT, MANAGE, NO_PERMISSIONS
+default_permission = READ
+
+# База данных для хранения пользователей (внутри контейнера)
+database_uri = sqlite:////mlflow/data/auth.db
+
+# Учётные данные администратора (ОБЯЗАТЕЛЬНО СМЕНИТЕ!)
+admin_username = admin
+admin_password = mlflow_admin_secure_password_123
+
+# Функция авторизации
+authorization_function = mlflow.server.auth:authenticate_request_basic_auth
+```
+
+#### Шаг 3: Обновление docker-compose.yml
+
+Замените секцию `mlflow` в `docker-compose.yml`:
+
+```yaml
+services:
+  # ... minio service ...
+
+  mlflow:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile.mlflow
+    container_name: boston_housing_mlflow
+    ports:
+      - "5000:5000"
+    environment:
+      # Подключение к MinIO для артефактов
+      - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
+      # Путь к конфигу аутентификации
+      - MLFLOW_AUTH_CONFIG_PATH=/mlflow/config/basic_auth.ini
+    command: >
+      --app-name basic-auth
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:////mlflow/data/mlflow.db
+      --default-artifact-root s3://mlflow-artifacts/
+    volumes:
+      # Конфиг аутентификации
+      - ./config/mlflow/basic_auth.ini:/mlflow/config/basic_auth.ini:ro
+      # Персистентное хранилище для БД
+      - mlflow_data:/mlflow/data
+    depends_on:
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - boston_housing_network
+```
+
+#### Шаг 4: Пересборка и запуск
+
+```bash
+# Пересобрать образ MLflow
+docker-compose build mlflow
+
+# Запустить сервисы
+docker-compose up -d minio mlflow
+
+# Проверить логи
+docker-compose logs -f mlflow
+```
+
+При первом запуске создаётся admin-пользователь с учётными данными из `basic_auth.ini`:
+- **Username**: `admin`
+- **Password**: `mlflow_admin_secure_password_123`
+
+#### Шаг 5: Проверка аутентификации
+
+```bash
+# Без авторизации — получим 401 Unauthorized
+curl http://localhost:5000/api/2.0/mlflow/experiments/search
+# {"error_code": "UNAUTHENTICATED", ...}
+
+# С авторизацией — успех
+curl -u admin:mlflow_admin_secure_password_123 \
+    http://localhost:5000/api/2.0/mlflow/experiments/search
+# {"experiments": [...]}
+```
+
+#### Шаг 6: Управление пользователями через API
+
+```bash
+# Создание нового пользователя
+curl -X POST http://localhost:5000/api/2.0/mlflow/users/create \
+    -H "Content-Type: application/json" \
+    -u admin:mlflow_admin_secure_password_123 \
+    -d '{"username": "data_scientist", "password": "ds_secure_pwd_456"}'
+
+# Получение списка пользователей
+curl -u admin:mlflow_admin_secure_password_123 \
+    http://localhost:5000/api/2.0/mlflow/users/list
+
+# Смена пароля пользователя
+curl -X PATCH http://localhost:5000/api/2.0/mlflow/users/update-password \
+    -H "Content-Type: application/json" \
+    -u admin:mlflow_admin_secure_password_123 \
+    -d '{"username": "data_scientist", "password": "new_password_789"}'
+
+# Удаление пользователя
+curl -X DELETE http://localhost:5000/api/2.0/mlflow/users/delete \
+    -H "Content-Type: application/json" \
+    -u admin:mlflow_admin_secure_password_123 \
+    -d '{"username": "data_scientist"}'
+```
+
+#### Шаг 7: Подключение из Python-кода
+
+```python
+import os
+import mlflow
+
+# Способ 1: Через переменные окружения (рекомендуется)
+os.environ["MLFLOW_TRACKING_USERNAME"] = "data_scientist"
+os.environ["MLFLOW_TRACKING_PASSWORD"] = "ds_secure_pwd_456"
+
+mlflow.set_tracking_uri("http://localhost:5000")
+mlflow.set_experiment("boston-housing")
+
+with mlflow.start_run(run_name="my-experiment"):
+    mlflow.log_param("model", "RandomForest")
+    mlflow.log_metric("r2_score", 0.89)
+```
+
+Или через `.env` файл:
+
+```bash
+# .env (добавьте к существующим переменным)
+MLFLOW_TRACKING_USERNAME=data_scientist
+MLFLOW_TRACKING_PASSWORD=ds_secure_pwd_456
+```
+
+```python
+from dotenv import load_dotenv
+load_dotenv()
+
+import mlflow
+mlflow.set_tracking_uri("http://localhost:5000")
+# Credentials подхватятся автоматически из окружения
+```
+
+#### Шаг 8: Обновление src/config/mlflow_config.py
+
+```python
+"""Конфигурация MLflow для проекта."""
+
+import os
+
+
+# MLflow Tracking
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
+MLFLOW_EXPERIMENT_NAME = os.getenv("MLFLOW_EXPERIMENT_NAME", "boston-housing")
+
+# Аутентификация MLflow
+MLFLOW_TRACKING_USERNAME = os.getenv("MLFLOW_TRACKING_USERNAME", "")
+MLFLOW_TRACKING_PASSWORD = os.getenv("MLFLOW_TRACKING_PASSWORD", "")
+
+# MinIO/S3 для артефактов
+MLFLOW_S3_ENDPOINT_URL = os.getenv("MLFLOW_S3_ENDPOINT_URL", "http://localhost:9000")
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID", "minioadmin0")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "minioadmin1230")
+
+
+def setup_mlflow_env():
+    """Настройка переменных окружения для MLflow + S3 + Auth."""
+    os.environ["MLFLOW_S3_ENDPOINT_URL"] = MLFLOW_S3_ENDPOINT_URL
+    os.environ["AWS_ACCESS_KEY_ID"] = AWS_ACCESS_KEY_ID
+    os.environ["AWS_SECRET_ACCESS_KEY"] = AWS_SECRET_ACCESS_KEY
+    
+    # Аутентификация (если заданы)
+    if MLFLOW_TRACKING_USERNAME:
+        os.environ["MLFLOW_TRACKING_USERNAME"] = MLFLOW_TRACKING_USERNAME
+    if MLFLOW_TRACKING_PASSWORD:
+        os.environ["MLFLOW_TRACKING_PASSWORD"] = MLFLOW_TRACKING_PASSWORD
+```
+
+---
+
+### Быстрый старт: MLflow с Auth в Docker
+
+```bash
+# 1. Создать структуру
+mkdir -p config/mlflow docker
+
+# 2. Создать Dockerfile.mlflow (см. выше)
+
+# 3. Создать basic_auth.ini
+cat > config/mlflow/basic_auth.ini << 'EOF'
+[mlflow]
+default_permission = READ
+database_uri = sqlite:////mlflow/data/auth.db
+admin_username = admin
+admin_password = mlflow_admin_secure_password_123
+authorization_function = mlflow.server.auth:authenticate_request_basic_auth
+EOF
+
+# 4. Обновить docker-compose.yml (см. выше)
+
+# 5. Собрать и запустить
+docker-compose build mlflow
+docker-compose up -d minio mlflow
+
+# 6. Проверить
+curl -u admin:mlflow_admin_secure_password_123 http://localhost:5000/api/2.0/mlflow/experiments/search
+
+# 7. Добавить credentials в .env
+echo 'MLFLOW_TRACKING_USERNAME=admin' >> .env
+echo 'MLFLOW_TRACKING_PASSWORD=mlflow_admin_secure_password_123' >> .env
+
+# Готово! 🎉
+```
+
+---
+
+### Вариант 2: Nginx Reverse Proxy с Basic Auth
+
+Для более гибкой настройки используйте Nginx.
+
+#### Шаг 1: Создание файла паролей
+
+```bash
+# Установка apache2-utils (для htpasswd)
+sudo apt install apache2-utils
+
+# Создание файла паролей
+htpasswd -c ./config/htpasswd admin
+htpasswd ./config/htpasswd data_scientist
+htpasswd ./config/htpasswd ml_engineer
+```
+
+#### Шаг 2: Конфигурация Nginx
+
+Создайте файл `config/nginx.conf`:
+
+```nginx
+upstream mlflow {
+    server mlflow:5000;
+}
+
+server {
+    listen 80;
+    server_name mlflow.localhost;
+
+    # Basic Auth
+    auth_basic "MLflow Tracking Server";
+    auth_basic_user_file /etc/nginx/htpasswd;
+
+    location / {
+        proxy_pass http://mlflow;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # WebSocket support (для live updates)
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    # Health check endpoint (без авторизации)
+    location /health {
+        auth_basic off;
+        proxy_pass http://mlflow/health;
+    }
+}
+```
+
+#### Шаг 3: Добавление Nginx в docker-compose.yml
+
+```yaml
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: boston_housing_nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./config/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./config/htpasswd:/etc/nginx/htpasswd:ro
+    depends_on:
+      - mlflow
+    networks:
+      - boston_housing_network
+
+  mlflow:
+    # ... (без публикации порта наружу)
+    expose:
+      - "5000"
+    # ports: убрать!
+```
+
+#### Шаг 4: Подключение через Nginx
+
+```bash
+# Доступ через браузер с авторизацией
+# http://localhost:8080
+
+# Из кода
+export MLFLOW_TRACKING_URI=http://localhost:8080
+export MLFLOW_TRACKING_USERNAME=data_scientist
+export MLFLOW_TRACKING_PASSWORD=your_password
+```
+
+---
+
+### Вариант 3: OAuth 2.0 / OIDC (для корпоративных сред)
+
+Для интеграции с корпоративными identity providers (Keycloak, Okta, Azure AD).
+
+#### Шаг 1: Установка oauth-proxy
+
+```yaml
+services:
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.5.1
+    container_name: boston_housing_oauth_proxy
+    ports:
+      - "4180:4180"
+    environment:
+      - OAUTH2_PROXY_PROVIDER=oidc
+      - OAUTH2_PROXY_OIDC_ISSUER_URL=https://your-idp.example.com/realms/ml
+      - OAUTH2_PROXY_CLIENT_ID=mlflow
+      - OAUTH2_PROXY_CLIENT_SECRET=${OAUTH_CLIENT_SECRET}
+      - OAUTH2_PROXY_COOKIE_SECRET=${COOKIE_SECRET}
+      - OAUTH2_PROXY_UPSTREAMS=http://mlflow:5000
+      - OAUTH2_PROXY_EMAIL_DOMAINS=*
+      - OAUTH2_PROXY_HTTP_ADDRESS=0.0.0.0:4180
+    depends_on:
+      - mlflow
+    networks:
+      - boston_housing_network
+```
+
+---
+
+### Настройка прав доступа (RBAC) в MLflow
+
+MLflow поддерживает role-based access control начиная с версии 2.5+.
+
+#### Доступные роли
+
+| Роль | Права |
+|------|-------|
+| `READER` | Просмотр экспериментов и runs |
+| `EDITOR` | Создание/редактирование runs, логирование метрик |
+| `ADMIN` | Управление экспериментами, удаление |
+
+#### Назначение прав на эксперимент
+
+```python
+from mlflow.server.auth import set_experiment_permission
+
+# Дать права на эксперимент
+set_experiment_permission(
+    experiment_id="1",
+    username="data_scientist",
+    permission="EDITOR"
+)
+
+set_experiment_permission(
+    experiment_id="1", 
+    username="ml_engineer",
+    permission="READER"
+)
+```
+
+Через REST API:
+
+```bash
+# Назначение прав
+curl -X POST http://localhost:5000/api/2.0/mlflow/experiments/permissions/create \
+    -H "Content-Type: application/json" \
+    -u admin:password \
+    -d '{
+        "experiment_id": "1",
+        "username": "data_scientist", 
+        "permission": "EDIT"
+    }'
+```
+
+---
+
+### Настройка учётных данных MinIO для команды
+
+#### Создание отдельных пользователей MinIO
+
+```bash
+# Настройка alias
+mc alias set local http://localhost:9000 minioadmin0 minioadmin1230
+
+# Создание пользователей для команды
+mc admin user add local alice alice_secret_key
+mc admin user add local bob bob_secret_key
+
+# Создание групп
+mc admin group add local data-scientists alice
+mc admin group add local ml-engineers bob
+
+# Создание политики только на чтение
+cat > ~/readonly-policy.json << 'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:ListBucket"],
+      "Resource": ["arn:aws:s3:::*"]
+    }
+  ]
+}
+EOF
+
+mc admin policy add local readonly ~/readonly-policy.json
+mc admin policy set local readonly group=ml-engineers
+
+# Полный доступ для data scientists
+cat > ~/readwrite-policy.json << 'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:*"],
+      "Resource": ["arn:aws:s3:::mlflow-artifacts", "arn:aws:s3:::mlflow-artifacts/*"]
+    }
+  ]
+}
+EOF
+
+mc admin policy add local readwrite ~/readwrite-policy.json
+mc admin policy set local readwrite group=data-scientists
+```
+
+#### Файл .env для разных пользователей
+
+```bash
+# .env.alice
+AWS_ACCESS_KEY_ID=alice
+AWS_SECRET_ACCESS_KEY=alice_secret_key
+MLFLOW_TRACKING_USERNAME=alice
+MLFLOW_TRACKING_PASSWORD=alice_mlflow_password
+
+# .env.bob
+AWS_ACCESS_KEY_ID=bob
+AWS_SECRET_ACCESS_KEY=bob_secret_key
+MLFLOW_TRACKING_USERNAME=bob
+MLFLOW_TRACKING_PASSWORD=bob_mlflow_password
+```
+
+---
+
+### Рекомендации по безопасности
+
+1. **Никогда не коммитьте credentials в Git**
+   ```gitignore
+   # .gitignore
+   .env
+   .env.*
+   config/htpasswd
+   *.ini
+   ```
+
+2. **Используйте переменные окружения или секреты**
+   ```bash
+   # Для CI/CD используйте GitHub Secrets, GitLab CI Variables и т.д.
+   export MLFLOW_TRACKING_PASSWORD=$MLFLOW_SECRET
+   ```
+
+3. **Регулярно ротируйте ключи**
+   ```bash
+   # Смена пароля MinIO пользователя
+   mc admin user update local alice new_secret_key
+   ```
+
+4. **Ограничьте сетевой доступ**
+   - MLflow и MinIO должны быть доступны только из внутренней сети
+   - Используйте VPN для удалённого доступа
+   - Настройте firewall rules
+
+5. **Включите TLS/HTTPS**
+   ```yaml
+   # Для production обязательно используйте HTTPS
+   nginx:
+     volumes:
+       - ./certs:/etc/nginx/certs:ro
+   ```
 
 ---
 
