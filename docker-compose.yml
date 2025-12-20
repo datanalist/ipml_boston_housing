@@ -28,12 +28,13 @@ services:
     networks:
       - boston_housing_network
 
-  # MLflow Tracking Server с аутентификацией
+  # MLflow Tracking Server (доступ через Nginx)
   mlflow:
     image: ipml_boston_housing-mlflow:v2
     container_name: boston_housing_mlflow
-    ports:
-      - "5000:5000"
+    # Порт НЕ публикуем наружу - доступ только через Nginx
+    expose:
+      - "5000"
     environment:
       # Подключение к MinIO для артефактов
       - MLFLOW_S3_ENDPOINT_URL=http://minio:9000
@@ -66,6 +67,32 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    restart: unless-stopped
+    networks:
+      - boston_housing_network
+
+  # Nginx Reverse Proxy с Basic Auth (форма входа в браузере)
+  nginx:
+    image: nginx:alpine
+    container_name: boston_housing_nginx
+    ports:
+      - "5000:80"  # MLflow UI через Nginx на порту 5000
+    environment:
+      - MLFLOW_ADMIN_USERNAME=${MLFLOW_ADMIN_USERNAME}
+      - MLFLOW_ADMIN_PASSWORD=${MLFLOW_ADMIN_PASSWORD}
+    volumes:
+      - ./config/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./docker/entrypoint-nginx.sh:/entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    env_file:
+      - .env
+    depends_on:
+      - mlflow
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     restart: unless-stopped
     networks:
       - boston_housing_network
