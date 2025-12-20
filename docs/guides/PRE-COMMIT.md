@@ -26,13 +26,60 @@
 
 ### Hooks в проекте
 
-| Hook | Инструмент | Назначение |
-|------|------------|------------|
-| `ruff-check` | Ruff | Линтинг Python кода |
-| `ruff-format` | Ruff | Форматирование кода |
-| `dvc-pre-commit` | DVC | Проверка .dvc файлов |
-| `dvc-pre-push` | DVC | Проверка данных перед push |
-| `dvc-post-checkout` | DVC | Автообновление данных |
+#### 🔧 Общие проверки (pre-commit-hooks v5.0.0)
+
+| Hook | Назначение |
+|------|------------|
+| `trailing-whitespace` | Удаление пробелов в конце строк |
+| `end-of-file-fixer` | Добавление newline в конец файла |
+| `check-yaml` | Проверка синтаксиса YAML |
+| `check-json` | Проверка синтаксиса JSON |
+| `check-toml` | Проверка синтаксиса TOML |
+| `check-added-large-files` | Блокировка файлов >500KB |
+| `check-merge-conflict` | Поиск нерешённых merge конфликтов |
+| `check-executables-have-shebangs` | Проверка shebang в исполняемых файлах |
+| `check-symlinks` | Проверка символических ссылок |
+| `detect-private-key` | Детекция приватных ключей |
+| `check-case-conflict` | Проверка конфликтов регистра в именах файлов |
+| `check-docstring-first` | Проверка docstring в начале Python модулей |
+
+#### 🐍 Python (Ruff v0.14.6)
+
+| Hook | Назначение |
+|------|------------|
+| `ruff-check` | Линтинг Python кода с автоисправлением |
+| `ruff-format` | Форматирование кода |
+
+#### 📄 YAML (yamllint v1.37.0)
+
+| Hook | Назначение |
+|------|------------|
+| `yamllint` | Линтинг YAML файлов (конфиг: `.yamllint.yaml`) |
+
+#### 🐚 Shell (shellcheck-py v0.10.0.1)
+
+| Hook | Назначение |
+|------|------------|
+| `shellcheck` | Проверка синтаксиса shell скриптов |
+
+#### 🔐 Безопасность (detect-secrets v1.5.0)
+
+| Hook | Назначение |
+|------|------------|
+| `detect-secrets` | Поиск случайно закоммиченных секретов |
+
+#### 📝 Git Commits (commitizen v4.8.3)
+
+| Hook | Stage | Назначение |
+|------|-------|------------|
+| `commitizen` | commit-msg | Проверка формата Conventional Commits |
+
+#### 🚫 Отключенные hooks
+
+| Hook | Причина |
+|------|---------|
+| `hadolint-docker` | Требует рабочий Docker daemon |
+| `dvc-pre-commit`, `dvc-pre-push` | DVC hooks отключены (опционально) |
 
 ---
 
@@ -57,7 +104,7 @@ uv add pre-commit
 
 ```bash
 # Установка всех типов hooks
-uv run pre-commit install --hook-type pre-commit --hook-type pre-push --hook-type post-checkout
+uv run pre-commit install --hook-type pre-commit --hook-type commit-msg
 ```
 
 Или по отдельности:
@@ -66,11 +113,8 @@ uv run pre-commit install --hook-type pre-commit --hook-type pre-push --hook-typ
 # Только pre-commit (проверка перед коммитом)
 uv run pre-commit install
 
-# Pre-push (проверка перед push)
-uv run pre-commit install --hook-type pre-push
-
-# Post-checkout (после checkout)
-uv run pre-commit install --hook-type post-checkout
+# Commit-msg (проверка формата сообщения коммита)
+uv run pre-commit install --hook-type commit-msg
 ```
 
 ### Шаг 3: Проверка установки
@@ -81,8 +125,7 @@ ls .git/hooks/
 
 # Ожидаемый вывод:
 # pre-commit
-# pre-push
-# post-checkout
+# commit-msg
 ```
 
 ---
@@ -93,32 +136,61 @@ ls .git/hooks/
 
 ```yaml
 repos:
-# Ruff - линтер и форматтер Python
+# Общие проверки для всех файлов
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v5.0.0
+  hooks:
+    - id: trailing-whitespace
+    - id: end-of-file-fixer
+    - id: check-yaml
+    - id: check-json
+    - id: check-toml
+    - id: check-added-large-files
+      args: ['--maxkb=500']
+    - id: check-merge-conflict
+    - id: check-executables-have-shebangs
+    - id: check-symlinks
+    - id: detect-private-key
+    - id: check-case-conflict
+    - id: check-docstring-first
+
+# Python - Ruff (linter + formatter)
 - repo: https://github.com/astral-sh/ruff-pre-commit
   rev: v0.14.6
   hooks:
-    # Линтер - проверка стиля и ошибок
     - id: ruff-check
-      types_or: [ python, pyi ]
-      args: [ --fix ]  # Автоисправление
-    # Форматтер - единый стиль кода
+      types_or: [python, pyi]
+      args: [--fix]
     - id: ruff-format
-      types_or: [ python, pyi ]
+      types_or: [python, pyi]
 
-# DVC - версионирование данных
-- repo: https://github.com/iterative/dvc
-  rev: 3.56.0
+# YAML - линтинг
+- repo: https://github.com/adrienverge/yamllint
+  rev: v1.37.0
   hooks:
-    # Проверка синхронизации .dvc файлов
-    - id: dvc-pre-commit
-      stages: [pre-commit]
-    # Проверка загрузки данных в remote
-    - id: dvc-pre-push
-      stages: [pre-push]
-    # Автовосстановление данных после checkout
-    - id: dvc-post-checkout
-      stages: [post-checkout]
-      always_run: true
+    - id: yamllint
+      args: [-c, .yamllint.yaml]
+
+# Shell scripts - проверка синтаксиса
+- repo: https://github.com/shellcheck-py/shellcheck-py
+  rev: v0.10.0.1
+  hooks:
+    - id: shellcheck
+      args: [--severity=warning]
+
+# Secrets detection
+- repo: https://github.com/Yelp/detect-secrets
+  rev: v1.5.0
+  hooks:
+    - id: detect-secrets
+      args: ['--baseline', '.secrets.baseline']
+
+# Git commit messages - Conventional Commits
+- repo: https://github.com/commitizen-tools/commitizen
+  rev: v4.8.3
+  hooks:
+    - id: commitizen
+      stages: [commit-msg]
 ```
 
 ### Обновление версий hooks
@@ -182,6 +254,15 @@ git push --no-verify
 
 ## Описание hooks
 
+### Общие проверки (pre-commit-hooks)
+
+**trailing-whitespace** — удаляет лишние пробелы в конце строк
+**end-of-file-fixer** — добавляет newline в конец файлов
+**check-yaml/json/toml** — проверяет синтаксис конфигурационных файлов
+**check-added-large-files** — блокирует файлы больше 500KB
+**check-merge-conflict** — находит нерешённые merge конфликты
+**detect-private-key** — находит случайно добавленные приватные ключи
+
 ### Ruff Check
 
 **Что делает:** Проверяет Python код на ошибки и стилистические проблемы.
@@ -223,59 +304,79 @@ def foo(x, y):
     return x + y
 ```
 
-### DVC Pre-commit
+### Yamllint
 
-**Что делает:** Проверяет, что `.dvc` файлы соответствуют актуальным данным.
+**Что делает:** Проверяет YAML файлы на соответствие стандартам.
 
-**Когда срабатывает:**
-- Изменены данные, но не обновлён `.dvc` файл
-- `.dvc` файл не соответствует данным
+**Конфигурация:** `.yamllint.yaml`
 
-**Пример ошибки:**
-```
-ERROR: data/raw.dvc is not in sync with data/raw/
-Run `dvc add data/raw` to update
-```
+**Проверки:**
+- Правильные отступы
+- Длина строк
+- Кавычки
+- Пустые строки
 
-**Исправление:**
-```bash
-dvc add data/raw
-git add data/raw.dvc
-```
+### Shellcheck
 
-### DVC Pre-push
-
-**Что делает:** Проверяет, что данные загружены в remote storage перед push.
-
-**Когда срабатывает:**
-- Есть незагруженные данные в DVC cache
-- Remote storage недоступен
+**Что делает:** Анализирует shell скрипты на ошибки и потенциальные проблемы.
 
 **Пример ошибки:**
 ```
-ERROR: Data not pushed to remote
-Run `dvc push` before git push
+docker/entrypoint.sh:5: warning: Quote this to prevent word splitting [SC2086]
 ```
 
-**Исправление:**
-```bash
-dvc push
-git push
+### Detect-secrets
+
+**Что делает:** Сканирует файлы на наличие случайно закоммиченных секретов (пароли, API ключи, токены).
+
+**Конфигурация:** `.secrets.baseline` — файл с известными "безопасными" секретами (false positives)
+
+**Пример ошибки:**
+```
+Potential secret detected in config/settings.py:42
+Type: High Entropy String
 ```
 
-### DVC Post-checkout
-
-**Что делает:** Автоматически обновляет данные после `git checkout`.
-
-**Когда срабатывает:**
-- После `git checkout <branch>`
-- После `git pull`
-- После `git merge`
-
-**Что происходит:**
+**Обновление baseline:**
 ```bash
-# Автоматически выполняется:
-dvc checkout
+# Если секрет безопасен (false positive)
+detect-secrets scan --baseline .secrets.baseline
+```
+
+### Commitizen
+
+**Что делает:** Проверяет, что сообщения коммитов соответствуют формату [Conventional Commits](https://www.conventionalcommits.org/).
+
+**Stage:** `commit-msg`
+
+**Формат сообщений:**
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer]
+```
+
+**Типы коммитов:**
+- `feat:` — новая функциональность
+- `fix:` — исправление бага
+- `docs:` — изменения в документации
+- `style:` — форматирование, стиль кода
+- `refactor:` — рефакторинг
+- `test:` — добавление тестов
+- `chore:` — обслуживание, зависимости
+
+**Пример:**
+```bash
+# ✅ Правильно
+git commit -m "feat(api): добавлен эндпоинт предсказаний"
+git commit -m "fix: исправлена ошибка загрузки модели"
+git commit -m "docs: обновлено README"
+
+# ❌ Неправильно
+git commit -m "добавил фичу"
+git commit -m "fix bug"
 ```
 
 ---
@@ -293,42 +394,45 @@ git add .
 
 # 3. Коммит (hooks запустятся автоматически)
 git commit -m "feat: улучшена модель"
+# ✓ trailing-whitespace: Passed
+# ✓ check-yaml: Passed
 # ✓ ruff-check: Passed
 # ✓ ruff-format: Passed
-# ✓ dvc-pre-commit: Passed
+# ✓ detect-secrets: Passed
+# ✓ commitizen: Passed
 
-# 4. Push (dvc-pre-push проверит данные)
-git push
-# ✓ dvc-pre-push: Passed
-```
-
-### Сценарий 2: Обновление данных
-
-```bash
-# 1. Обновите данные
-cp new_data.csv data/raw/housing.csv
-
-# 2. Обновите DVC
-dvc add data/raw
-
-# 3. Коммит
-git add data/raw.dvc
-git commit -m "data: обновлены данные"
-
-# 4. Push данных и кода
-dvc push
+# 4. Push
 git push
 ```
 
-### Сценарий 3: Переключение веток
+### Сценарий 2: Ошибка в формате коммита
 
 ```bash
-# Переключение на другую ветку
-git checkout feature-experiment
-# ✓ dvc-post-checkout: автоматически обновит данные
+# Неправильный формат сообщения
+git commit -m "добавил фичу"
+# ✗ commitizen: Failed
+# commit validation: failed!
+# please enter a commit message in the commitizen format.
 
-# Данные соответствуют версии в ветке
-ls data/raw/
+# Правильный формат
+git commit -m "feat: добавлена новая функция предсказания"
+# ✓ commitizen: Passed
+```
+
+### Сценарий 3: Найден потенциальный секрет
+
+```bash
+# При коммите найден секрет
+git commit -m "feat: добавлен конфиг"
+# ✗ detect-secrets: Failed
+# Potential secret detected
+
+# Если это false positive — обновите baseline
+detect-secrets scan --baseline .secrets.baseline
+git add .secrets.baseline
+git commit -m "chore: обновлён baseline секретов"
+
+# Если это реальный секрет — удалите его из кода!
 ```
 
 ### Сценарий 4: Исправление ошибок линтера
@@ -347,6 +451,20 @@ git add .
 git commit -m "feat: new feature"
 ```
 
+### Сценарий 5: Проверка YAML файлов
+
+```bash
+# Ошибка в YAML
+git commit -m "chore: обновлён docker-compose"
+# ✗ yamllint: Failed
+# docker-compose.yml:15: wrong indentation
+
+# Исправьте файл и повторите
+vim docker-compose.yml
+git add docker-compose.yml
+git commit -m "chore: обновлён docker-compose"
+```
+
 ---
 
 ## Устранение неполадок
@@ -357,12 +475,12 @@ git commit -m "feat: new feature"
 
 **Решение:**
 ```bash
-uv run pre-commit install --hook-type pre-commit --hook-type pre-push --hook-type post-checkout
+uv run pre-commit install --hook-type pre-commit --hook-type commit-msg
 ```
 
 ### "No files to check"
 
-**Причина:** Нет staged Python файлов
+**Причина:** Нет staged файлов нужного типа
 
 **Решение:**
 ```bash
@@ -383,19 +501,37 @@ git add .
 git commit -m "style: форматирование кода"
 ```
 
-### DVC hook падает без remote
+### Commitizen отклоняет сообщение коммита
 
-**Причина:** Не настроен DVC remote
+**Причина:** Сообщение не соответствует Conventional Commits
 
 **Решение:**
 ```bash
-# Проверьте настройку remote
-dvc remote list
+# Используйте правильный формат
+git commit -m "feat: описание новой функции"
+git commit -m "fix: описание исправления"
+git commit -m "docs: описание изменений в документации"
 
-# Если пусто — настройте MinIO
-dvc remote add -d minio s3://boston-housing-data
-dvc remote modify minio endpointurl http://localhost:9000
+# Или используйте интерактивный режим commitizen
+uv run cz commit
 ```
+
+### Detect-secrets находит false positive
+
+**Решение:** Обновите baseline файл:
+```bash
+# Сканирование и обновление baseline
+detect-secrets scan --baseline .secrets.baseline
+
+# Добавьте обновлённый baseline
+git add .secrets.baseline
+```
+
+### Yamllint жалуется на docker-compose
+
+**Причина:** Использование специальных конструкций (anchors, templates)
+
+**Решение:** В конфигурации уже включён `--unsafe` для `check-yaml`. Если yamllint всё ещё жалуется, проверьте `.yamllint.yaml`.
 
 ### Слишком медленные проверки
 
@@ -427,12 +563,14 @@ git commit -m "fix: исправление после hotfix"
 
 ```bash
 # 1. Установка hooks
-uv run pre-commit install --hook-type pre-commit --hook-type pre-push --hook-type post-checkout
+uv run pre-commit install --hook-type pre-commit --hook-type commit-msg
 
 # 2. Проверка всех файлов
 uv run pre-commit run --all-files
 
 # 3. Теперь hooks работают автоматически при коммитах
+# Используйте Conventional Commits для сообщений:
+git commit -m "feat: описание функции"
 
 # Обновление hooks
 uv run pre-commit autoupdate
@@ -443,6 +581,11 @@ uv run pre-commit autoupdate
 ## 📚 Полезные ссылки
 
 - [Pre-commit Documentation](https://pre-commit.com/)
+- [Pre-commit Hooks Collection](https://github.com/pre-commit/pre-commit-hooks)
 - [Ruff Documentation](https://docs.astral.sh/ruff/)
-- [DVC Pre-commit Hooks](https://dvc.org/doc/command-reference/install#install-git-hooks)
+- [Yamllint Documentation](https://yamllint.readthedocs.io/)
+- [Shellcheck Documentation](https://www.shellcheck.net/)
+- [Detect-secrets Documentation](https://github.com/Yelp/detect-secrets)
+- [Commitizen Documentation](https://commitizen-tools.github.io/commitizen/)
+- [Conventional Commits](https://www.conventionalcommits.org/)
 - [Git Hooks](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks)
