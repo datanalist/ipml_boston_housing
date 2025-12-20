@@ -266,8 +266,8 @@ def main():
 
         # Логирование артефакта модели
         live.log_artifact(
-            str(model_path), 
-            type="model", 
+            str(model_path),
+            type="model",
             name="random_forest"
         )
 ```
@@ -721,4 +721,3 @@ make test               # Запуск тестов
 ---
 
 *Отчёт создан: 8 декабря 2025*
-

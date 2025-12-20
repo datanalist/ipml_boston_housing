@@ -42,4 +42,3 @@ ENTRYPOINT ["uv", "run", "python", "src/modeling/train.py"]
 
 # Параметры по умолчанию (можно переопределить при запуске)
 CMD ["--n-estimators", "100", "--max-depth", "10"]
-

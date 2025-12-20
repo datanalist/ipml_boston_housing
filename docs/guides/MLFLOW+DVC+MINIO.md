@@ -516,7 +516,7 @@ def setup_mlflow_env():
     os.environ["MLFLOW_S3_ENDPOINT_URL"] = MLFLOW_S3_ENDPOINT_URL
     os.environ["AWS_ACCESS_KEY_ID"] = AWS_ACCESS_KEY_ID
     os.environ["AWS_SECRET_ACCESS_KEY"] = AWS_SECRET_ACCESS_KEY
-    
+
     # Аутентификация (если заданы)
     if MLFLOW_TRACKING_USERNAME:
         os.environ["MLFLOW_TRACKING_USERNAME"] = MLFLOW_TRACKING_USERNAME
@@ -601,7 +601,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
+
         # WebSocket support (для live updates)
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -709,7 +709,7 @@ set_experiment_permission(
 )
 
 set_experiment_permission(
-    experiment_id="1", 
+    experiment_id="1",
     username="ml_engineer",
     permission="READER"
 )
@@ -724,7 +724,7 @@ curl -X POST http://localhost:5000/api/2.0/mlflow/experiments/permissions/create
     -u admin:password \
     -d '{
         "experiment_id": "1",
-        "username": "data_scientist", 
+        "username": "data_scientist",
         "permission": "EDIT"
     }'
 ```
@@ -895,7 +895,7 @@ from src.config.mlflow_config import (
 
 class MLflowExperimentTracker:
     """Класс для трекинга ML экспериментов через MLflow."""
-    
+
     def __init__(
         self,
         experiment_name: str = MLFLOW_EXPERIMENT_NAME,
@@ -903,63 +903,63 @@ class MLflowExperimentTracker:
     ):
         """
         Инициализация трекера.
-        
+
         Args:
             experiment_name: Название эксперимента в MLflow
             tracking_uri: URI MLflow Tracking Server
         """
         # Настройка окружения для S3
         setup_mlflow_env()
-        
+
         # Подключение к MLflow
         mlflow.set_tracking_uri(tracking_uri)
-        
+
         # Создание/получение эксперимента
         mlflow.set_experiment(experiment_name)
-        
+
         self.experiment_name = experiment_name
         self.run = None
-        
+
         logger.info(f"MLflow трекер инициализирован: {tracking_uri}")
         logger.info(f"Эксперимент: {experiment_name}")
-    
+
     def start_run(self, run_name: str | None = None, tags: dict | None = None):
         """Начало нового запуска эксперимента."""
         self.run = mlflow.start_run(run_name=run_name, tags=tags)
         logger.info(f"Запущен эксперимент: {self.run.info.run_id}")
         return self
-    
+
     def __enter__(self):
         """Поддержка контекстного менеджера."""
         if self.run is None:
             self.start_run()
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Завершение эксперимента."""
         mlflow.end_run()
         self.run = None
-    
+
     def log_params(self, params: dict[str, Any]):
         """Логирование параметров эксперимента."""
         mlflow.log_params(params)
         logger.debug(f"Залогированы параметры: {list(params.keys())}")
-    
+
     def log_metrics(self, metrics: dict[str, float], step: int | None = None):
         """Логирование метрик."""
         mlflow.log_metrics(metrics, step=step)
         for name, value in metrics.items():
             logger.info(f"Метрика {name}: {value:.4f}")
-    
+
     def log_metric(self, key: str, value: float, step: int | None = None):
         """Логирование одной метрики."""
         mlflow.log_metric(key, value, step=step)
-    
+
     def log_artifact(self, local_path: str | Path, artifact_path: str | None = None):
         """Логирование артефакта (файла)."""
         mlflow.log_artifact(str(local_path), artifact_path)
         logger.info(f"Артефакт сохранён: {local_path}")
-    
+
     def log_model(
         self,
         model,
@@ -969,7 +969,7 @@ class MLflowExperimentTracker:
     ):
         """
         Логирование модели sklearn.
-        
+
         Args:
             model: Обученная модель
             artifact_path: Путь в хранилище артефактов
@@ -980,7 +980,7 @@ class MLflowExperimentTracker:
         if input_example is not None:
             predictions = model.predict(input_example)
             signature = infer_signature(input_example, predictions)
-        
+
         mlflow.sklearn.log_model(
             model,
             artifact_path,
@@ -989,23 +989,23 @@ class MLflowExperimentTracker:
             registered_model_name=registered_model_name,
         )
         logger.info(f"Модель залогирована: {artifact_path}")
-        
+
         if registered_model_name:
             logger.info(f"Модель зарегистрирована: {registered_model_name}")
-    
+
     def log_figure(self, figure, artifact_file: str):
         """Логирование matplotlib/plotly фигуры."""
         mlflow.log_figure(figure, artifact_file)
-    
+
     def set_tags(self, tags: dict[str, str]):
         """Установка тегов для запуска."""
         mlflow.set_tags(tags)
-    
+
     @property
     def run_id(self) -> str | None:
         """ID текущего запуска."""
         return self.run.info.run_id if self.run else None
-    
+
     @property
     def artifact_uri(self) -> str | None:
         """URI артефактов текущего запуска."""
@@ -1042,18 +1042,18 @@ from src.tracking.mlflow_tracker import MLflowExperimentTracker
 def load_data(data_path: Path) -> tuple[pd.DataFrame, pd.Series]:
     """Загрузка данных Boston Housing."""
     logger.info(f"Загрузка данных из {data_path}")
-    
+
     df = pd.read_csv(data_path, sep=r"\s+", header=None)
-    
+
     column_names = [
         "CRIM", "ZN", "INDUS", "CHAS", "NOX", "RM",
         "AGE", "DIS", "RAD", "TAX", "PTRATIO", "B", "LSTAT", "MEDV",
     ]
     df.columns = column_names
-    
+
     X = df.drop("MEDV", axis=1)
     y = df["MEDV"]
-    
+
     logger.info(f"Загружено {len(df)} записей, {len(X.columns)} признаков")
     return X, y
 
@@ -1061,7 +1061,7 @@ def load_data(data_path: Path) -> tuple[pd.DataFrame, pd.Series]:
 def evaluate_model(model, X_test, y_test) -> dict[str, float]:
     """Оценка модели и расчёт метрик."""
     y_pred = model.predict(X_test)
-    
+
     return {
         "r2_score": r2_score(y_test, y_pred),
         "rmse": np.sqrt(mean_squared_error(y_test, y_pred)),
@@ -1090,9 +1090,9 @@ def main(
     register_model: bool,
 ):
     """Обучение модели Random Forest с MLflow трекингом."""
-    
+
     actual_max_depth = None if max_depth == 0 else max_depth
-    
+
     params = {
         "n_estimators": n_estimators,
         "max_depth": actual_max_depth,
@@ -1101,17 +1101,17 @@ def main(
         "random_state": random_state,
         "test_size": test_size,
     }
-    
+
     data_file = RAW_DATA_DIR / HOUSING_DATA_FILE
-    
+
     if not data_file.exists():
         logger.error(f"Файл данных не найден: {data_file}")
         logger.info("Выполните 'dvc pull' для загрузки данных из MinIO")
         raise click.Abort()
-    
+
     # Инициализация MLflow трекера
     tracker = MLflowExperimentTracker()
-    
+
     with tracker.start_run(run_name=run_name):
         # Теги для идентификации
         tracker.set_tags({
@@ -1119,27 +1119,27 @@ def main(
             "framework": "sklearn",
             "dataset": "boston_housing",
         })
-        
+
         # Логирование параметров
         tracker.log_params(params)
-        
+
         # Загрузка данных
         X, y = load_data(data_file)
         tracker.log_params({
             "n_samples": len(X),
             "n_features": len(X.columns),
         })
-        
+
         # Разделение на train/test
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=test_size, random_state=random_state
         )
-        
+
         tracker.log_params({
             "train_size": len(X_train),
             "test_size_actual": len(X_test),
         })
-        
+
         # Обучение модели
         logger.info("Обучение модели Random Forest...")
         model = RandomForestRegressor(
@@ -1152,23 +1152,23 @@ def main(
         )
         model.fit(X_train, y_train)
         logger.success("Модель обучена!")
-        
+
         # Оценка модели
         metrics = evaluate_model(model, X_test, y_test)
         tracker.log_metrics(metrics)
-        
+
         # Важность признаков
         feature_importance = pd.DataFrame({
             "feature": X.columns,
             "importance": model.feature_importances_
         }).sort_values("importance", ascending=False)
-        
+
         # Сохраняем важность признаков как артефакт
         importance_path = Path("feature_importance.csv")
         feature_importance.to_csv(importance_path, index=False)
         tracker.log_artifact(importance_path)
         importance_path.unlink()  # Удаляем временный файл
-        
+
         # Логирование модели в MLflow
         model_name = "boston-housing-rf" if register_model else None
         tracker.log_model(
@@ -1177,14 +1177,14 @@ def main(
             input_example=X_test.head(5),
             registered_model_name=model_name,
         )
-        
+
         # Также сохраняем локально для DVC
         MODELS_DIR.mkdir(parents=True, exist_ok=True)
         model_path = MODELS_DIR / "random_forest.pkl"
         with open(model_path, "wb") as f:
             pickle.dump(model, f)
         logger.success(f"Модель сохранена локально: {model_path}")
-        
+
         # Итоговый вывод
         logger.info("\n" + "=" * 50)
         logger.info("📈 ИТОГОВЫЕ МЕТРИКИ:")
@@ -1385,13 +1385,13 @@ tracker = MLflowExperimentTracker(experiment_name="grid-search")
 
 for i, combo in enumerate(combinations):
     params = dict(zip(param_names, combo))
-    
+
     with tracker.start_run(run_name=f"grid-{i:03d}"):
         tracker.log_params(params)
-        
+
         # Обучение и оценка модели
         # ... код обучения ...
-        
+
         tracker.log_metrics(metrics)
 ```
 
@@ -1642,4 +1642,3 @@ ipml_boston_housing/
 ├── .env                    # Переменные окружения
 └── pyproject.toml          # Зависимости
 ```
-

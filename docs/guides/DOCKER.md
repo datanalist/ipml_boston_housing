@@ -467,4 +467,3 @@ docker-compose run --rm --entrypoint /bin/bash train
 - [Docker Compose Documentation](https://docs.docker.com/compose/)
 - [Best Practices for Dockerfiles](https://docs.docker.com/develop/develop-images/dockerfile_best-practices/)
 - [uv in Docker](https://docs.astral.sh/uv/guides/integration/docker/)
-

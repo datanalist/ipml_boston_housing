@@ -19,4 +19,3 @@ fi
 
 # Запуск nginx
 exec nginx -g "daemon off;"
-

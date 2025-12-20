@@ -9,4 +9,3 @@ fi
 
 # Запуск MLflow server с переданными аргументами
 exec mlflow server "$@"
-

@@ -386,7 +386,7 @@ soho@Sohobook:~/ipml_boston_housing$ history
   37  uv python install 3.13
   38  uv python list
   39  uv venv python 3.13
-  40  uv venv 
+  40  uv venv
   41  uv venv --help
   42  uv venv .venv --python=python3.13
   43  uv run python --version

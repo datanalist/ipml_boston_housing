@@ -21,4 +21,3 @@ EXPOSE 5000
 
 # Entrypoint подставляет переменные и запускает MLflow
 ENTRYPOINT ["/entrypoint.sh"]
-

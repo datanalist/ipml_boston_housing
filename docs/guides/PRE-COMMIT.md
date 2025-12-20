@@ -446,4 +446,3 @@ uv run pre-commit autoupdate
 - [Ruff Documentation](https://docs.astral.sh/ruff/)
 - [DVC Pre-commit Hooks](https://dvc.org/doc/command-reference/install#install-git-hooks)
 - [Git Hooks](https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks)
-

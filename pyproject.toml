@@ -20,3 +20,8 @@ dependencies = [
     "mlflow[auth]>=3.7.0",
     "boto3>=1.41.5",
 ]
+
+[dependency-groups]
+dev = [
+    "detect-secrets>=1.5.0",
+]

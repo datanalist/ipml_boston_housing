@@ -79,17 +79,32 @@ MODEL_REGISTRY: dict[str, dict[str, Any]] = {
     },
     "random_forest": {
         "class": RandomForestRegressor,
-        "params": {"n_estimators": 100, "max_depth": 10, "random_state": 42, "n_jobs": -1},
+        "params": {
+            "n_estimators": 100,
+            "max_depth": 10,
+            "random_state": 42,
+            "n_jobs": -1,
+        },
         "description": "Случайный лес",
     },
     "extra_trees": {
         "class": ExtraTreesRegressor,
-        "params": {"n_estimators": 100, "max_depth": 10, "random_state": 42, "n_jobs": -1},
+        "params": {
+            "n_estimators": 100,
+            "max_depth": 10,
+            "random_state": 42,
+            "n_jobs": -1,
+        },
         "description": "Экстремально рандомизированные деревья",
     },
     "gradient_boosting": {
         "class": GradientBoostingRegressor,
-        "params": {"n_estimators": 100, "max_depth": 5, "learning_rate": 0.1, "random_state": 42},
+        "params": {
+            "n_estimators": 100,
+            "max_depth": 5,
+            "learning_rate": 0.1,
+            "random_state": 42,
+        },
         "description": "Градиентный бустинг",
     },
     "adaboost": {
@@ -371,7 +386,7 @@ def model_info_cmd(model_name: str):
     click.echo(f"\n📊 Информация о модели '{model_name}':\n")
     click.echo(f"  Описание: {info['description']}")
     click.echo(f"  Класс:    {info['class'].__name__}")
-    click.echo(f"  Параметры по умолчанию:")
+    click.echo("  Параметры по умолчанию:")
     for param, value in info["params"].items():
         click.echo(f"    - {param}: {value}")
     click.echo()
@@ -379,4 +394,3 @@ def model_info_cmd(model_name: str):
 
 if __name__ == "__main__":
     cli()
-
