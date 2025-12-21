@@ -5,6 +5,7 @@
 """
 
 import os
+import pickle
 import sys
 import time
 from pathlib import Path
@@ -27,6 +28,7 @@ load_dotenv(PROJ_ROOT / ".env")
 # Пути к данным
 DATA_DIR = PROJ_ROOT / "data"
 RAW_DATA_DIR = DATA_DIR / "raw"
+MODELS_DIR = DATA_DIR / "models"
 HOUSING_DATA_FILE = "housing.csv"
 
 
@@ -109,8 +111,14 @@ def run_experiment(name, model, X_train, X_test, y_train, y_test):
         mlflow.log_metric("mae", mae)
         mlflow.log_metric("train_time_seconds", train_time)
 
-        # Логируем модель
+        # Логируем модель в MLflow
         mlflow.sklearn.log_model(model, "model")
+
+        # Сохраняем модель локально в data/models
+        MODELS_DIR.mkdir(parents=True, exist_ok=True)
+        model_path = MODELS_DIR / f"{name}.pkl"
+        with open(model_path, "wb") as f:
+            pickle.dump(model, f)
 
         # Теги
         mlflow.set_tag("experiment_type", "demo")
@@ -119,6 +127,7 @@ def run_experiment(name, model, X_train, X_test, y_train, y_test):
         logger.info(
             f"  ✅ {name:<25} | R²: {r2:.4f} | RMSE: {rmse:.4f} | MAE: {mae:.4f}"
         )
+        logger.info(f"     💾 Модель сохранена: {model_path}")
 
         return {"name": name, "r2": r2, "rmse": rmse, "mae": mae}
 

@@ -27,7 +27,7 @@ PROJ_ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(PROJ_ROOT / ".env")
 sys.path.insert(0, str(PROJ_ROOT))
 
-from src.config import RAW_DATA_DIR, HOUSING_DATA_FILE  # noqa: E402
+from src.config import RAW_DATA_DIR, HOUSING_DATA_FILE, MODELS_DIR  # noqa: E402
 from src.ml_models.model_loader import MODEL_REGISTRY, create_model  # noqa: E402
 
 
@@ -369,11 +369,18 @@ def run_single_experiment(
             except Exception as e:
                 logger.warning(f"  ⚠️  Не удалось залогировать sklearn модель: {e}")
 
-            # 4.2 Модель в pickle формате
+            # 4.2 Модель в pickle формате (временный файл для MLflow)
             model_pkl_path = os.path.join(temp_dir, f"{model_name}.pkl")
             with open(model_pkl_path, "wb") as f:
                 pickle.dump(model, f)
             mlflow.log_artifact(model_pkl_path, "model_artifacts")
+
+            # 4.2.1 Сохранение модели в data/models
+            MODELS_DIR.mkdir(parents=True, exist_ok=True)
+            local_model_path = MODELS_DIR / f"{run_name}.pkl"
+            with open(local_model_path, "wb") as f:
+                pickle.dump(model, f)
+            logger.info(f"  💾 Модель сохранена: {local_model_path}")
 
             # 4.3 CSV с предсказаниями
             predictions_df = pd.DataFrame(

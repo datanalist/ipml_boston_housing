@@ -85,7 +85,7 @@ dvc-status:
 ## Start infrastructure (MinIO, MLflow, Nginx)
 .PHONY: docker-up
 docker-up:
-	docker-compose up -d
+	@docker-compose up -d 2>&1 || (echo ">>> Recreating Docker network..." && docker-compose down && docker network rm ipml_boston_housing_boston_housing_network 2>/dev/null; docker-compose up -d)
 
 ## Stop infrastructure
 .PHONY: docker-down
@@ -111,6 +111,13 @@ docker-build:
 .PHONY: docker-status
 docker-status:
 	docker-compose ps
+
+## Recreate Docker network (use if "network needs to be recreated" error)
+.PHONY: docker-recreate
+docker-recreate:
+	docker-compose down
+	docker network rm ipml_boston_housing_boston_housing_network 2>/dev/null || true
+	docker-compose up -d
 
 #################################################################################
 # DATA ACQUISITION                                                              #
