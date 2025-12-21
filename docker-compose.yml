@@ -1,7 +1,174 @@
 # Docker Compose для ML инфраструктуры проекта Boston Housing
 # Запуск из корня проекта: docker-compose up -d
+#
+# Airflow UI: http://localhost:8080 (admin/admin)
+# MLflow UI:  http://localhost:5000
+# MinIO UI:   http://localhost:9001
+
+# Общие настройки для Airflow сервисов
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: docker/Dockerfile.airflow
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow  # pragma: allowlist secret
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow  # pragma: allowlist secret
+    AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+    AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+    # Подключение к MinIO
+    AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+    AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+    MLFLOW_TRACKING_URI: http://mlflow:5000
+    MLFLOW_TRACKING_USERNAME: ${MLFLOW_ADMIN_USERNAME:-admin}
+    MLFLOW_TRACKING_PASSWORD: ${MLFLOW_ADMIN_PASSWORD:-admin}
+    # Параллелизм
+    AIRFLOW__CORE__PARALLELISM: 16
+    AIRFLOW__CORE__DAG_CONCURRENCY: 8
+    AIRFLOW__CELERY__WORKER_CONCURRENCY: 4
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/logs:/opt/airflow/logs
+    - ./airflow/plugins:/opt/airflow/plugins
+    - ./data:/opt/airflow/data
+    - ./src:/opt/airflow/src
+    - ./scripts:/opt/airflow/scripts
+  user: "${AIRFLOW_UID:-50000}:0"
+  depends_on: &airflow-common-depends-on
+    redis:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
+  networks:
+    - boston_housing_network
 
 services:
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # AIRFLOW INFRASTRUCTURE
+  # ═══════════════════════════════════════════════════════════════════════════════
+
+  # PostgreSQL - база метаданных Airflow
+  postgres:
+    image: postgres:15
+    container_name: boston_housing_postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow  # pragma: allowlist secret
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - boston_housing_network
+
+  # Redis - брокер сообщений для Celery
+  redis:
+    image: redis:7-alpine
+    container_name: boston_housing_redis
+    expose:
+      - 6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - boston_housing_network
+
+  # Airflow Webserver - веб-интерфейс
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: boston_housing_airflow_webserver
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  # Airflow Scheduler - планировщик задач
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: boston_housing_airflow_scheduler
+    command: scheduler
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  # Airflow Worker - исполнитель задач (Celery)
+  airflow-worker:
+    <<: *airflow-common
+    container_name: boston_housing_airflow_worker
+    command: celery worker
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - 'celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}" || celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    environment:
+      <<: *airflow-common-env
+      DUMB_INIT_SETSID: "0"
+    restart: unless-stopped
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  # Airflow Init - инициализация БД и создание пользователя
+  airflow-init:
+    <<: *airflow-common
+    container_name: boston_housing_airflow_init
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        mkdir -p /sources/logs /sources/dags /sources/plugins
+        chown -R "${AIRFLOW_UID:-50000}:0" /sources/{logs,dags,plugins}
+        exec /entrypoint airflow version
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_ADMIN_USERNAME:-admin}
+      _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD:-admin}
+    user: "0:0"
+    volumes:
+      - ./airflow:/sources
+
+  # ═══════════════════════════════════════════════════════════════════════════════
+  # EXISTING ML INFRASTRUCTURE
+  # ═══════════════════════════════════════════════════════════════════════════════
+
   # MinIO - S3-совместимое хранилище для данных и моделей
   minio:
     build:
@@ -126,6 +293,8 @@ services:
 
 volumes:
   mlflow_data:
+  postgres_data:
+  airflow_logs:
 
 networks:
   boston_housing_network:
