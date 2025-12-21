@@ -30,7 +30,10 @@ services:
 
   # MLflow Tracking Server (доступ через Nginx)
   mlflow:
-    image: ipml_boston_housing-mlflow:v2
+    build:
+      context: ./docker
+      dockerfile: Dockerfile.mlflow
+    image: ipml_boston_housing-mlflow:latest
     container_name: boston_housing_mlflow
     # Порт НЕ публикуем наружу - доступ только через Nginx
     expose:
@@ -45,6 +48,8 @@ services:
       # Учётные данные администратора MLflow (из .env)
       - MLFLOW_ADMIN_USERNAME=${MLFLOW_ADMIN_USERNAME}
       - MLFLOW_ADMIN_PASSWORD=${MLFLOW_ADMIN_PASSWORD}
+      # Секретный ключ для CSRF защиты
+      - MLFLOW_FLASK_SERVER_SECRET_KEY=${MLFLOW_FLASK_SERVER_SECRET_KEY:-mlflow-secret-key-change-me}
     command: >
       --app-name basic-auth
       --host 0.0.0.0

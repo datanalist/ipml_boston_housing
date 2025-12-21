@@ -5,27 +5,30 @@
 """
 
 import os
-import sys
-import time
 import pickle
+import sys
 import tempfile
-from pathlib import Path
+import time
 from datetime import datetime
+from pathlib import Path
 
+import matplotlib.pyplot as plt
 import mlflow
 import mlflow.sklearn
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from dotenv import load_dotenv
 from loguru import logger
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split
 
-# Добавляем путь к src
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+# Загружаем переменные окружения и добавляем путь к src
+PROJ_ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(PROJ_ROOT / ".env")
+sys.path.insert(0, str(PROJ_ROOT))
 
-from src.ml_models.model_loader import create_model, MODEL_REGISTRY
-from src.config import RAW_DATA_DIR, HOUSING_DATA_FILE
+from src.config import RAW_DATA_DIR, HOUSING_DATA_FILE  # noqa: E402
+from src.ml_models.model_loader import MODEL_REGISTRY, create_model  # noqa: E402
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

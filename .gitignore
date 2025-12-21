@@ -4,14 +4,14 @@
 # MinIO storage
 minio_data/
 
-# Data files - игнорируем содержимое, но не саму папку и .dvc файлы
+# Data files - игнорируем содержимое, но сохраняем структуру папок и .dvc файлы
 data/**
 !data/
-!data/*/
+!data/**/
 !data/*.dvc
 !data/**/*.dvc
-!data/.gitignore
-!data/**/.gitignore
+!data/.gitkeep
+!data/**/.gitkeep
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -1,11 +1,14 @@
-# Используем локально собранный образ (без сетевых запросов)
-FROM ipml_boston_housing-mlflow:latest
+# Базовый образ Python
+FROM python:3.11-slim
 
-# Установка gettext для envsubst
-USER root
+# Установка системных зависимостей
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
     gettext-base \
     && rm -rf /var/lib/apt/lists/*
+
+# Установка MLflow
+RUN pip install --no-cache-dir mlflow[auth] boto3
 
 # Создание директорий
 RUN mkdir -p /mlflow/data /mlflow/config

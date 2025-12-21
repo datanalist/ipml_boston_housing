@@ -137,16 +137,24 @@
 git clone <repo-url>
 cd ipml_boston_housing
 
-# 2. Создание окружения
+# 2. Полная автоматическая настройка (рекомендуется)
+make setup
+# Создаст окружение, установит зависимости, pre-commit хуки, скачает данные, запустит Docker
+
+# --- ИЛИ пошаговая установка ---
+
+# 2a. Создание окружения и установка зависимостей
 make create_environment
+make requirements
 
-# 3. Активация и установка зависимостей
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-uv sync
+# 2b. Настройка pre-commit хуков
+make pre-commit
 
-# 4. Настройка pre-commit хуков
-pre-commit install
-pre-commit install --hook-type commit-msg
+# 2c. Загрузка данных
+make dvc-pull
+
+# 2d. Запуск инфраструктуры (опционально)
+make docker-up
 ```
 
 ### Запуск обучения
@@ -357,13 +365,38 @@ ipml_boston_housing/
 ### Makefile-команды
 
 ```bash
-make help              # Все доступные команды
-make requirements      # Установить зависимости (uv sync)
-make create_environment # Создать виртуальное окружение
-make lint              # Проверка кода (ruff)
-make format            # Форматирование кода
-make test              # Запуск тестов
-make clean             # Очистка .pyc и __pycache__
+# Быстрый старт
+make help                # Все доступные команды
+make setup               # Полная настройка: env + deps + pre-commit + dvc + docker
+
+# Окружение и зависимости
+make create_environment  # Создать виртуальное окружение
+make requirements        # Установить зависимости (uv sync)
+make pre-commit          # Установить все pre-commit хуки
+
+# Качество кода
+make lint                # Проверка кода (ruff)
+make format              # Форматирование кода
+make test                # Запуск тестов
+make clean               # Очистка .pyc и __pycache__
+
+# DVC (версионирование данных)
+make dvc-pull            # Скачать данные из remote
+make dvc-push            # Загрузить данные в remote
+make dvc-status          # Проверить статус DVC
+
+# Docker-инфраструктура
+make docker-up           # Запустить MinIO, MLflow, Nginx
+make docker-down         # Остановить контейнеры
+make docker-logs         # Просмотр логов
+make docker-build        # Сборка образов
+make docker-status       # Статус контейнеров
+
+# ML-эксперименты
+make experiments         # Запуск экспериментов (требуется MLflow)
+make train               # Обучение в Docker-контейнере
+make run                 # Запуск main.py
+make data                # Обработка датасета
 ```
 
 ### Pre-commit хуки
@@ -380,12 +413,16 @@ make clean             # Очистка .pyc и __pycache__
 | **Git** | commitizen (Conventional Commits) |
 
 ```bash
-# Установка хуков
-pre-commit install
-pre-commit install --hook-type commit-msg
+# Установка всех хуков (pre-commit, commit-msg, pre-push)
+make pre-commit
 
-# Ручной запуск
-pre-commit run --all-files
+# Или вручную
+uv run pre-commit install --install-hooks
+uv run pre-commit install --hook-type commit-msg
+uv run pre-commit install --hook-type pre-push
+
+# Ручной запуск проверок
+uv run pre-commit run --all-files
 ```
 
 ---

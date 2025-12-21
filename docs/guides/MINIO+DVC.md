@@ -255,6 +255,34 @@ git checkout main
 dvc checkout
 ```
 
+### Удаление файлов из DVC
+
+```bash
+# Удалить файл/директорию из отслеживания DVC
+dvc remove data/raw.dvc
+
+# Удалить модель из DVC
+dvc remove data/models.dvc
+```
+
+После выполнения `dvc remove`:
+- Удаляется `.dvc` файл
+- Убирается запись из `.gitignore`
+- Данные остаются в локальном кэше
+
+```bash
+# Очистка локального кэша (удаление неиспользуемых данных)
+dvc gc --workspace
+
+# Полная очистка кэша (все версии кроме текущей)
+dvc gc --all-commits
+
+# Очистка с удалением из remote хранилища
+dvc gc --workspace --cloud
+```
+
+> ⚠️ **Внимание**: `dvc gc --cloud` удалит данные из MinIO безвозвратно!
+
 ---
 
 ## Типичные сценарии использования
@@ -337,6 +365,23 @@ dvc checkout data/raw.dvc
 # Или полный откат всего проекта
 git checkout <commit-hash>
 dvc checkout
+```
+
+### Сценарий 6: Удаление файла из DVC
+
+```bash
+# 1. Удалить из отслеживания DVC
+dvc remove data/models.dvc
+
+# 2. Закоммитить изменения
+git add -A
+git commit -m "data: удалена модель из DVC"
+
+# 3. (Опционально) Очистить локальный кэш
+dvc gc --workspace
+
+# 4. (Опционально) Удалить из MinIO
+dvc gc --workspace --cloud
 ```
 
 ---
