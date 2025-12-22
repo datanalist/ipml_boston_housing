@@ -220,3 +220,12 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Airflow
+airflow/logs/
+airflow.cfg
+airflow.db
+airflow-webserver.pid
+webserver_config.py
+unittests.cfg
+standalone_admin_password.txt
