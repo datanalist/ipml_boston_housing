@@ -1,8 +1,8 @@
 # 📊 Отчёт: Трекинг ML-экспериментов
 
 **Проект:** Boston Housing Price Prediction  
-**Дата:** 20 декабря 2025  
-**Автор:** Студенческий проект по IPML  
+**Дата:** 23 декабря 2025 (обновлено)  
+**Автор:** Макаров Михаил Владимирович (студенческий проект по IPML)  
 
 ---
 
@@ -26,9 +26,12 @@
 
 | Инструмент | Версия | Назначение |
 |------------|--------|------------|
-| **MLflow** | 2.18.0+ | Трекинг экспериментов, Model Registry |
+| **MLflow** | 3.7.0+ | Трекинг экспериментов, Model Registry |
 | **MinIO** | latest | S3-совместимое хранилище артефактов |
 | **DVC** | 3.64.2+ | Версионирование данных |
+| **Apache Airflow** | 2.8.1 | Оркестрация ML пайплайнов |
+| **PostgreSQL** | 15 | База метаданных Airflow |
+| **Redis** | 7-alpine | Брокер сообщений Celery |
 | **Nginx** | alpine | Reverse proxy с Basic Auth |
 | **Docker** | — | Контейнеризация инфраструктуры |
 
@@ -36,7 +39,7 @@
 
 ```bash
 # Через uv (пакетный менеджер)
-uv add mlflow boto3
+uv add "mlflow[auth]>=3.7.0" "boto3>=1.41.5" "dvc[s3]>=3.64.2"
 
 # Обновление pyproject.toml
 ```
@@ -45,11 +48,31 @@ uv add mlflow boto3
 
 ```toml
 [project]
+name = "ipml-boston-housing"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
 dependencies = [
-    "mlflow>=2.18.0",
-    "boto3>=1.35.0",
+    "cookiecutter-data-science>=2.3.0",
     "dvc[s3]>=3.64.2",
-    # ... другие зависимости
+    "dvc-gdrive>=3.0.1",
+    "pre-commit>=4.5.0",
+    "ruff>=0.14.6",
+    "numpy>=2.3.5",
+    "pandas>=2.3.3",
+    "dvclive>=3.49.0",
+    "loguru>=0.7.3",
+    "scikit-learn>=1.7.2",
+    "click>=8.3.1",
+    "dvc-s3>=3.2.2",
+    "mlflow[auth]>=3.7.0",
+    "boto3>=1.41.5",
+]
+
+[dependency-groups]
+dev = [
+    "detect-secrets>=1.5.0",
 ]
 ```
 
@@ -113,13 +136,13 @@ CMD ["server", "/data", "--console-address", ":9001"]
 
 **Скриншот MinIO Object Browser:**
 
-![MinIO Object Browser](figures/minio.png)
+![UI MinIO](figures/6.png)
 
 *Рис. 1: Веб-консоль MinIO с бакетами для хранения данных DVC и артефактов MLflow*
 
 ### 1.3 Создание проекта и экспериментов
 
-**Запуск инфраструктуры:**s
+**Запуск инфраструктуры:**
 
 ```bash
 # Запуск MinIO и MLflow
@@ -206,44 +229,57 @@ AWS_SECRET_ACCESS_KEY=minioadmin1230
 
 **Доступ к сервисам:**
 
-| Сервис | URL | Описание |
-|--------|-----|----------|
-| MLflow UI | http://localhost:5000 | Веб-интерфейс MLflow |
-| MinIO Console | http://localhost:9001 | Управление хранилищем |
-| MinIO S3 API | http://localhost:9000 | S3 API для артефактов |
+| Сервис | URL | Логин/Пароль | Описание |
+|--------|-----|--------------|----------|
+| **Airflow UI** | http://localhost:8080 | admin / admin | Управление DAGs и мониторинг |
+| **MLflow UI** | http://localhost:5000 | admin / secure_password_123 | Веб-интерфейс MLflow |
+| **MinIO Console** | http://localhost:9001 | minioadmin0 / minioadmin1230 | Управление хранилищем |
+| **MinIO S3 API** | http://localhost:9000 | — | S3 API для артефактов |
 
 ---
 
 ## 2. Проведение экспериментов
 
-### 2.1 Проведение 15+ экспериментов с разными алгоритмами
+### 2.1 Проведение 19 экспериментов с разными алгоритмами
 
-Проведены эксперименты с различными алгоритмами машинного обучения:
+Реализован комплексный набор экспериментов через Airflow DAG `boston_housing_experiments` с параллельным обучением 19 моделей машинного обучения:
 
-| # | Алгоритм | Параметры | R² Score | RMSE |
-|---|----------|-----------|----------|------|
-| 1 | Random Forest | n=100, d=10 | 0.8512 | 3.30 |
-| 2 | Random Forest | n=200, d=15 | 0.8665 | 3.13 |
-| 3 | Random Forest | n=50, d=5 | 0.8234 | 3.60 |
-| 4 | Random Forest | n=300, d=20 | 0.8701 | 3.08 |
-| 5 | Gradient Boosting | n=100, d=5 | 0.8543 | 3.27 |
-| 6 | Gradient Boosting | n=200, d=10 | 0.8712 | 3.07 |
-| 7 | Ridge Regression | alpha=1.0 | 0.7234 | 4.50 |
-| 8 | Lasso Regression | alpha=0.1 | 0.7156 | 4.57 |
-| 9 | ElasticNet | alpha=0.5, l1_ratio=0.5 | 0.7089 | 4.62 |
-| 10 | SVR | C=1.0, kernel=rbf | 0.7823 | 3.99 |
-| 11 | KNN | n_neighbors=5 | 0.6512 | 5.05 |
-| 12 | Decision Tree | d=10 | 0.7456 | 4.32 |
-| 13 | AdaBoost | n=100 | 0.8123 | 3.71 |
-| 14 | Bagging | n=50 | 0.8345 | 3.48 |
-| 15 | Extra Trees | n=200, d=15 | 0.8623 | 3.18 |
-| 16 | Huber Regressor | epsilon=1.35 | 0.7012 | 4.68 |
+**Линейные модели (7 экспериментов):**
+| # | Алгоритм | Параметры | Описание |
+|---|----------|-----------|----------|
+| 1 | Linear Regression | — | Baseline линейная регрессия |
+| 2 | Ridge | alpha=0.1 | Ridge α=0.1 |
+| 3 | Ridge | alpha=1.0 | Ridge α=1.0 |
+| 4 | Ridge | alpha=10.0 | Ridge α=10.0 |
+| 5 | Lasso | alpha=0.1 | Lasso α=0.1 |
+| 6 | ElasticNet | alpha=0.5, l1_ratio=0.5 | ElasticNet |
+| 7 | Huber Regressor | epsilon=1.35 | Huber Regressor |
 
-**Скриншот группировки экспериментов:**
+**Древовидные модели и ансамбли (9 экспериментов):**
+| # | Алгоритм | Параметры | Описание |
+|---|----------|-----------|----------|
+| 8 | Decision Tree | max_depth=5 | Decision Tree d=5 |
+| 9 | Decision Tree | max_depth=10 | Decision Tree d=10 |
+| 10 | Random Forest | n_estimators=100, max_depth=10 | RF n=100 |
+| 11 | Random Forest | n_estimators=200, max_depth=15 | RF n=200 |
+| 12 | Extra Trees | n_estimators=100, max_depth=10 | ExtraTrees |
+| 13 | Gradient Boosting | n_estimators=100, learning_rate=0.1 | GBM lr=0.1 |
+| 14 | Gradient Boosting | n_estimators=200, learning_rate=0.05 | GBM lr=0.05 |
+| 15 | AdaBoost | n_estimators=50, learning_rate=1.0 | AdaBoost |
+| 16 | Bagging | n_estimators=20 | Bagging |
 
-![Groups](figures/groups.png)
+**Другие модели (3 эксперимента):**
+| # | Алгоритм | Параметры | Описание |
+|---|----------|-----------|----------|
+| 17 | SVR | kernel=rbf, C=1.0 | SVR RBF |
+| 18 | KNN | n_neighbors=5, weights=uniform | KNN k=5 |
+| 19 | KNN | n_neighbors=10, weights=distance | KNN k=10 |
 
-*Рис. 2: Группировка экспериментов в MLflow UI*
+**Скриншот проведенных экспериментов:**
+
+![UI MLFlow с экспериментами](figures/5.png)
+
+*Рис. 2: MLflow UI с проведенными и запущенными экспериментами*
 
 ### 2.2 Настройка логирования метрик, параметров и артефактов
 
@@ -287,17 +323,6 @@ with mlflow.start_run(run_name="rf-baseline"):
     })
 ```
 
-**Скриншот метрики R² Score:**
-
-![R2 Score](figures/r2_score.png)
-
-*Рис. 3: Сравнение метрики R² Score для различных экспериментов*
-
-**Скриншот времени обучения:**
-
-![Train Time](figures/train_time_seconds.png)
-
-*Рис. 4: Время обучения моделей в секундах*
 
 ### 2.3 Система сравнения экспериментов
 
@@ -376,17 +401,23 @@ runs = client.search_runs(
 )
 ```
 
-**Скриншот фильтрации экспериментов:**
-
-![Filters](figures/filters.png)
-
-*Рис. 5: Интерфейс фильтрации и поиска экспериментов в MLflow UI*
+**Скриншот фильтрации экспериментов (изображение недоступно):**
 
 ---
 
 ## 3. Интеграция с кодом
 
 ### 3.1 Интеграция MLflow в Python код
+
+**Структура модуля `src/tracking/`:**
+
+```
+src/tracking/
+├── __init__.py
+├── decorators.py      # 5 декораторов для автоматического логирования
+├── mlflow_tracker.py  # 2 контекстных менеджера
+└── utils.py           # 9 утилит для работы с экспериментами
+```
 
 **Модуль конфигурации `src/config/mlflow_config.py`:**
 
@@ -416,6 +447,16 @@ def setup_mlflow_env():
 
 **Модуль `src/tracking/decorators.py`:**
 
+Реализовано **5 декораторов** для автоматического логирования:
+
+| Декоратор | Назначение |
+|-----------|------------|
+| `@mlflow_run` | Автоматическое создание MLflow run с логированием времени выполнения |
+| `@log_params_decorator` | Автоматическое логирование kwargs функции как параметров |
+| `@log_metrics_decorator` | Извлечение и логирование метрик из возвращаемого словаря |
+| `@log_artifact_decorator` | Автоматическое логирование файла-результата как артефакта |
+| `@timed_execution` | Измерение и логирование времени выполнения функции |
+
 ```python
 """Декораторы для автоматического логирования в MLflow."""
 
@@ -435,10 +476,15 @@ def mlflow_run(
     """
     Декоратор для автоматического создания MLflow run.
 
-    Пример использования:
-        @mlflow_run(experiment_name="my-exp", run_name="baseline")
-        def train_model(params):
-            ...
+    Создаёт новый MLflow run перед выполнением функции и автоматически
+    логирует время выполнения.
+
+    Example:
+        >>> @mlflow_run(experiment_name="my-exp", run_name="baseline")
+        ... def train_model(params):
+        ...     model = RandomForestRegressor(**params)
+        ...     model.fit(X_train, y_train)
+        ...     return model
     """
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
@@ -446,17 +492,11 @@ def mlflow_run(
             mlflow.set_experiment(experiment_name)
 
             with mlflow.start_run(run_name=run_name, tags=tags):
-                # Логируем время начала
                 start_time = time.time()
                 mlflow.log_param("start_time", start_time)
-
-                # Выполняем функцию
                 result = func(*args, **kwargs)
-
-                # Логируем время выполнения
                 duration = time.time() - start_time
                 mlflow.log_metric("duration_seconds", duration)
-
                 logger.info(f"Эксперимент завершён за {duration:.2f}с")
                 return result
 
@@ -467,17 +507,13 @@ def mlflow_run(
 def log_params_decorator(func: Callable) -> Callable:
     """
     Декоратор для автоматического логирования параметров функции.
-
-    Пример:
-        @log_params_decorator
-        def train(n_estimators=100, max_depth=10):
-            ...
+    Автоматически логирует все kwargs переданные в функцию как параметры MLflow.
     """
     @functools.wraps(func)
     def wrapper(*args, **kwargs) -> Any:
-        # Логируем все kwargs как параметры
-        if kwargs:
+        if kwargs and mlflow.active_run():
             mlflow.log_params(kwargs)
+            logger.debug(f"Залогированы параметры: {list(kwargs.keys())}")
         return func(*args, **kwargs)
     return wrapper
 
@@ -485,28 +521,60 @@ def log_params_decorator(func: Callable) -> Callable:
 def log_metrics_decorator(metric_keys: list[str]):
     """
     Декоратор для автоматического логирования метрик из результата.
-
-    Пример:
-        @log_metrics_decorator(["r2_score", "rmse"])
-        def evaluate(model, X, y) -> dict:
-            return {"r2_score": 0.85, "rmse": 3.2}
+    Извлекает указанные ключи из возвращаемого словаря и логирует их как метрики.
     """
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs) -> dict:
             result = func(*args, **kwargs)
-
-            if isinstance(result, dict):
+            if isinstance(result, dict) and mlflow.active_run():
                 metrics_to_log = {
                     k: v for k, v in result.items()
                     if k in metric_keys and isinstance(v, (int, float))
                 }
                 if metrics_to_log:
                     mlflow.log_metrics(metrics_to_log)
-
             return result
         return wrapper
     return decorator
+
+
+def log_artifact_decorator(artifact_path: str | None = None):
+    """
+    Декоратор для автоматического логирования артефакта.
+    Если функция возвращает путь к файлу, этот файл будет залогирован.
+    """
+    from pathlib import Path
+
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> Any:
+            result = func(*args, **kwargs)
+            if mlflow.active_run():
+                if isinstance(result, (str, Path)) and Path(result).exists():
+                    mlflow.log_artifact(str(result), artifact_path)
+                    logger.debug(f"Артефакт залогирован: {result}")
+            return result
+        return wrapper
+    return decorator
+
+
+def timed_execution(func: Callable) -> Callable:
+    """
+    Декоратор для измерения времени выполнения функции.
+    Логирует время выполнения как метрику {function_name}_duration_seconds.
+    """
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs) -> Any:
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        duration = time.time() - start_time
+        if mlflow.active_run():
+            metric_name = f"{func.__name__}_duration_seconds"
+            mlflow.log_metric(metric_name, duration)
+        logger.debug(f"{func.__name__} выполнена за {duration:.2f}с")
+        return result
+    return wrapper
 ```
 
 **Пример использования декораторов:**
@@ -539,6 +607,13 @@ metrics = evaluate_model(model, X_test, y_test)
 
 **Модуль `src/tracking/mlflow_tracker.py`:**
 
+Реализовано **2 класса** для управления экспериментами:
+
+| Класс | Назначение |
+|-------|------------|
+| `MLflowExperimentTracker` | Основной контекстный менеджер для трекинга экспериментов |
+| `NestedRunTracker` | Контекстный менеджер для вложенных runs (кросс-валидация, grid search) |
+
 ```python
 """MLflow трекер с поддержкой контекстного менеджера."""
 
@@ -557,7 +632,28 @@ from src.config.mlflow_config import (
 
 
 class MLflowExperimentTracker:
-    """Контекстный менеджер для трекинга ML экспериментов."""
+    """
+    Контекстный менеджер для трекинга ML экспериментов.
+
+    Предоставляет удобный интерфейс для работы с MLflow: автоматически
+    настраивает окружение, управляет жизненным циклом run и логирует
+    параметры, метрики, артефакты и модели.
+
+    Attributes:
+        experiment_name: Название эксперимента MLflow
+        run: Текущий активный run (или None)
+
+    Example:
+        >>> tracker = MLflowExperimentTracker(experiment_name="boston-housing")
+        >>> with tracker.start_run(run_name="gradient-boosting-v1"):
+        ...     tracker.set_tags({"model_type": "GradientBoosting"})
+        ...     tracker.log_params({"n_estimators": 200, "max_depth": 10})
+        ...     model = GradientBoostingRegressor(n_estimators=200, max_depth=10)
+        ...     model.fit(X_train, y_train)
+        ...     tracker.log_metrics({"r2_score": 0.85, "rmse": 3.2})
+        ...     tracker.log_model(model, "model", input_example=X_test.head(5))
+        ...     print(f"Run ID: {tracker.run_id}")
+    """
 
     def __init__(
         self,
@@ -567,7 +663,6 @@ class MLflowExperimentTracker:
         setup_mlflow_env()
         mlflow.set_tracking_uri(tracking_uri)
         mlflow.set_experiment(experiment_name)
-
         self.experiment_name = experiment_name
         self.run = None
         logger.info(f"MLflow трекер: {tracking_uri}, эксперимент: {experiment_name}")
@@ -579,13 +674,115 @@ class MLflowExperimentTracker:
         return self
 
     def __enter__(self):
-        """Поддержка контекстного менеджера."""
         if self.run is None:
             self.start_run()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Завершение эксперимента."""
+        mlflow.end_run()
+        self.run = None
+
+    def log_params(self, params: dict[str, Any]):
+        """Логирование параметров."""
+        mlflow.log_params(params)
+        logger.debug(f"Залогированы параметры: {list(params.keys())}")
+
+    def log_param(self, key: str, value: Any):
+        """Логирование одного параметра."""
+        mlflow.log_param(key, value)
+
+    def log_metrics(self, metrics: dict[str, float], step: int | None = None):
+        """Логирование метрик."""
+        mlflow.log_metrics(metrics, step=step)
+        for name, value in metrics.items():
+            logger.info(f"Метрика {name}: {value:.4f}")
+
+    def log_metric(self, key: str, value: float, step: int | None = None):
+        """Логирование одной метрики."""
+        mlflow.log_metric(key, value, step=step)
+
+    def log_artifact(self, local_path: str | Path, artifact_path: str | None = None):
+        """Логирование артефакта (файла)."""
+        mlflow.log_artifact(str(local_path), artifact_path)
+        logger.info(f"Артефакт сохранён: {local_path}")
+
+    def log_artifacts(self, local_dir: str | Path, artifact_path: str | None = None):
+        """Логирование директории артефактов."""
+        mlflow.log_artifacts(str(local_dir), artifact_path)
+        logger.info(f"Директория артефактов сохранена: {local_dir}")
+
+    def log_model(self, model, artifact_path: str, input_example=None,
+                  registered_model_name: str | None = None):
+        """Логирование sklearn модели с автоматическим определением сигнатуры."""
+        signature = None
+        if input_example is not None:
+            predictions = model.predict(input_example)
+            signature = infer_signature(input_example, predictions)
+        mlflow.sklearn.log_model(
+            model, artifact_path,
+            signature=signature,
+            input_example=input_example,
+            registered_model_name=registered_model_name,
+        )
+        logger.info(f"Модель сохранена: {artifact_path}")
+
+    def set_tags(self, tags: dict[str, str]):
+        """Установка тегов."""
+        mlflow.set_tags(tags)
+
+    def set_tag(self, key: str, value: str):
+        """Установка одного тега."""
+        mlflow.set_tag(key, value)
+
+    def log_dict(self, dictionary: dict, artifact_file: str):
+        """Логирование словаря как JSON/YAML артефакта."""
+        mlflow.log_dict(dictionary, artifact_file)
+
+    def log_figure(self, figure, artifact_file: str):
+        """Логирование matplotlib/plotly фигуры."""
+        mlflow.log_figure(figure, artifact_file)
+
+    @property
+    def run_id(self) -> str | None:
+        """ID текущего запуска."""
+        return self.run.info.run_id if self.run else None
+
+    @property
+    def artifact_uri(self) -> str | None:
+        """URI хранилища артефактов текущего запуска."""
+        return self.run.info.artifact_uri if self.run else None
+
+    @property
+    def experiment_id(self) -> str | None:
+        """ID текущего эксперимента."""
+        return self.run.info.experiment_id if self.run else None
+
+
+class NestedRunTracker:
+    """
+    Контекстный менеджер для вложенных MLflow runs.
+
+    Позволяет создавать иерархическую структуру экспериментов,
+    например, для кросс-валидации или grid search.
+
+    Example:
+        >>> with MLflowExperimentTracker() as parent:
+        ...     parent.log_params({"model": "RandomForest"})
+        ...     for fold in range(5):
+        ...         with NestedRunTracker(f"fold-{fold}") as child:
+        ...             child.log_metrics({"accuracy": 0.85 + fold * 0.01})
+    """
+
+    def __init__(self, run_name: str | None = None, tags: dict | None = None):
+        self.run_name = run_name
+        self.tags = tags
+        self.run = None
+
+    def __enter__(self):
+        self.run = mlflow.start_run(run_name=self.run_name, tags=self.tags, nested=True)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
         mlflow.end_run()
         self.run = None
 
@@ -597,36 +794,14 @@ class MLflowExperimentTracker:
         """Логирование метрик."""
         mlflow.log_metrics(metrics, step=step)
 
-    def log_artifact(self, local_path: str | Path, artifact_path: str | None = None):
-        """Логирование артефакта."""
-        mlflow.log_artifact(str(local_path), artifact_path)
-
-    def log_model(self, model, artifact_path: str, input_example=None,
-                  registered_model_name: str | None = None):
-        """Логирование sklearn модели."""
-        signature = None
-        if input_example is not None:
-            predictions = model.predict(input_example)
-            signature = infer_signature(input_example, predictions)
-
-        mlflow.sklearn.log_model(
-            model, artifact_path,
-            signature=signature,
-            input_example=input_example,
-            registered_model_name=registered_model_name,
-        )
-
-    def set_tags(self, tags: dict[str, str]):
-        """Установка тегов."""
-        mlflow.set_tags(tags)
+    def log_metric(self, key: str, value: float, step: int | None = None):
+        """Логирование одной метрики."""
+        mlflow.log_metric(key, value, step=step)
 
     @property
     def run_id(self) -> str | None:
+        """ID текущего вложенного запуска."""
         return self.run.info.run_id if self.run else None
-
-    @property
-    def artifact_uri(self) -> str | None:
-        return self.run.info.artifact_uri if self.run else None
 ```
 
 **Пример использования контекстного менеджера:**
@@ -659,6 +834,20 @@ with tracker.start_run(run_name="gradient-boosting-v1"):
 
 **Модуль `src/tracking/utils.py`:**
 
+Реализовано **9 утилит** для работы с MLflow экспериментами:
+
+| Функция | Назначение |
+|---------|------------|
+| `get_best_run` | Получение лучшего запуска по метрике |
+| `load_best_model` | Загрузка лучшей модели из эксперимента |
+| `compare_runs` | Сравнение запусков в виде DataFrame |
+| `register_best_model` | Регистрация лучшей модели в Model Registry |
+| `delete_experiment_runs` | Удаление старых запусков (с dry-run режимом) |
+| `get_experiment_summary` | Получение сводки по эксперименту |
+| `get_run_by_name` | Поиск запуска по имени |
+| `list_registered_models` | Список зарегистрированных моделей |
+| `transition_model_stage` | Изменение стадии модели в Registry |
+
 ```python
 """Утилиты для работы с MLflow экспериментами."""
 
@@ -666,6 +855,7 @@ from typing import Any
 import pandas as pd
 import mlflow
 from mlflow.tracking import MlflowClient
+from loguru import logger
 
 
 def get_best_run(
@@ -679,13 +869,17 @@ def get_best_run(
     Args:
         experiment_name: Название эксперимента
         metric: Метрика для сортировки
-        ascending: True для минимизации, False для максимизации
+        ascending: True для минимизации (RMSE), False для максимизации (R²)
 
     Returns:
         Словарь с информацией о лучшем запуске
     """
     client = MlflowClient()
     experiment = client.get_experiment_by_name(experiment_name)
+
+    if experiment is None:
+        logger.warning(f"Эксперимент '{experiment_name}' не найден")
+        return {}
 
     order = "ASC" if ascending else "DESC"
     runs = client.search_runs(
@@ -704,6 +898,8 @@ def get_best_run(
         "params": best_run.data.params,
         "tags": best_run.data.tags,
         "artifact_uri": best_run.info.artifact_uri,
+        "start_time": best_run.info.start_time,
+        "status": best_run.info.status,
     }
 
 
@@ -711,9 +907,10 @@ def load_best_model(experiment_name: str, metric: str = "r2_score"):
     """Загрузка лучшей модели по метрике."""
     best_run = get_best_run(experiment_name, metric)
     if not best_run:
-        raise ValueError(f"Нет запусков в эксперименте {experiment_name}")
+        raise ValueError(f"Нет запусков в эксперименте '{experiment_name}'")
 
     model_uri = f"runs:/{best_run['run_id']}/model"
+    logger.info(f"Загрузка модели из {model_uri}")
     return mlflow.sklearn.load_model(model_uri)
 
 
@@ -722,12 +919,7 @@ def compare_runs(
     metrics: list[str] = None,
     top_n: int = 10,
 ) -> pd.DataFrame:
-    """
-    Сравнение запусков эксперимента.
-
-    Returns:
-        DataFrame с метриками и параметрами
-    """
+    """Сравнение запусков эксперимента."""
     if metrics is None:
         metrics = ["r2_score", "rmse", "mae"]
 
@@ -742,7 +934,11 @@ def compare_runs(
 
     data = []
     for run in runs:
-        row = {"run_id": run.info.run_id[:8]}
+        row = {
+            "run_id": run.info.run_id[:8],
+            "run_name": run.data.tags.get("mlflow.runName", ""),
+            "status": run.info.status,
+        }
         row.update({f"metric_{k}": v for k, v in run.data.metrics.items() if k in metrics})
         row.update({f"param_{k}": v for k, v in run.data.params.items()})
         data.append(row)
@@ -750,48 +946,54 @@ def compare_runs(
     return pd.DataFrame(data)
 
 
-def register_best_model(
-    experiment_name: str,
-    model_name: str,
-    metric: str = "r2_score",
-) -> str:
-    """
-    Регистрация лучшей модели в Model Registry.
-
-    Returns:
-        Версия зарегистрированной модели
-    """
-    best_run = get_best_run(experiment_name, metric)
-    if not best_run:
-        raise ValueError(f"Нет запусков в эксперименте {experiment_name}")
-
-    model_uri = f"runs:/{best_run['run_id']}/model"
-    result = mlflow.register_model(model_uri, model_name)
-
-    return result.version
-
-
-def cleanup_old_runs(
-    experiment_name: str,
-    keep_top_n: int = 10,
-    metric: str = "r2_score",
-):
-    """
-    Удаление старых запусков, кроме топ-N по метрике.
-    """
+def get_experiment_summary(experiment_name: str) -> dict[str, Any]:
+    """Получение сводки по эксперименту."""
     client = MlflowClient()
     experiment = client.get_experiment_by_name(experiment_name)
 
-    # Получаем все запуски отсортированные по метрике
+    if experiment is None:
+        return {}
+
+    all_runs = client.search_runs(experiment_ids=[experiment.experiment_id])
+    finished_runs = [r for r in all_runs if r.info.status == "FINISHED"]
+
+    r2_values = [r.data.metrics.get("r2_score") for r in finished_runs
+                 if r.data.metrics.get("r2_score") is not None]
+
+    return {
+        "experiment_name": experiment_name,
+        "total_runs": len(all_runs),
+        "finished_runs": len(finished_runs),
+        "best_r2": max(r2_values) if r2_values else None,
+        "avg_r2": sum(r2_values) / len(r2_values) if r2_values else None,
+    }
+
+
+def delete_experiment_runs(
+    experiment_name: str,
+    keep_top_n: int = 10,
+    metric: str = "r2_score",
+    dry_run: bool = True,
+) -> list[str]:
+    """Удаление старых запусков, кроме топ-N по метрике."""
+    client = MlflowClient()
+    experiment = client.get_experiment_by_name(experiment_name)
+
     all_runs = client.search_runs(
         experiment_ids=[experiment.experiment_id],
         order_by=[f"metrics.{metric} DESC"],
     )
 
-    # Удаляем все кроме топ-N
+    deleted_ids = []
     for run in all_runs[keep_top_n:]:
-        client.delete_run(run.info.run_id)
-        print(f"Удалён run: {run.info.run_id}")
+        if dry_run:
+            logger.info(f"[DRY RUN] Будет удалён run: {run.info.run_id}")
+        else:
+            client.delete_run(run.info.run_id)
+            logger.info(f"Удалён run: {run.info.run_id}")
+        deleted_ids.append(run.info.run_id)
+
+    return deleted_ids
 ```
 
 **Пример использования утилит:**
@@ -837,20 +1039,35 @@ uv sync
 
 # 3. Создание файла .env
 cat > .env << 'EOF'
+# MinIO
 MINIO_ROOT_USER=minioadmin0
 MINIO_ROOT_PASSWORD=minioadmin1230
+
+# MLflow
 MLFLOW_ADMIN_USERNAME=admin
 MLFLOW_ADMIN_PASSWORD=secure_password_123
 MLFLOW_TRACKING_URI=http://localhost:5000
 MLFLOW_TRACKING_USERNAME=admin
 MLFLOW_TRACKING_PASSWORD=secure_password_123
 MLFLOW_S3_ENDPOINT_URL=http://localhost:9000
+MLFLOW_FLASK_SERVER_SECRET_KEY=mlflow-secret-key-change-me
+
+# S3/MinIO для артефактов
 AWS_ACCESS_KEY_ID=minioadmin0
 AWS_SECRET_ACCESS_KEY=minioadmin1230
+
+# Airflow
+AIRFLOW_ADMIN_USERNAME=admin
+AIRFLOW_ADMIN_PASSWORD=admin
+AIRFLOW_UID=50000
 EOF
 
 # 4. Запуск инфраструктуры
-docker-compose up -d minio mlflow nginx
+# Запуск полного стека (включая Airflow)
+docker-compose up -d
+
+# ИЛИ запуск только ML инфраструктуры (без Airflow)
+# docker-compose up -d minio mlflow nginx
 
 # 5. Создание бакетов
 mc alias set local http://localhost:9000 minioadmin0 minioadmin1230
@@ -860,12 +1077,20 @@ mc mb local/mlflow-artifacts
 # 6. Загрузка данных
 dvc pull
 
-# 7. Запуск эксперимента
-python src/modeling/train_mlflow.py --run-name "my-experiment"
+# 7. Запуск экспериментов
+# Локально
+python src/modeling/train.py -n 200 -d 15
+
+# Через Airflow (полный набор из 19 экспериментов)
+# ВАЖНО: Дождитесь инициализации Airflow (2-3 минуты)
+# Проверьте готовность: docker-compose logs airflow-init
+# Откройте http://localhost:8080 (admin/admin)
+# Запустите DAG: boston_housing_experiments
 
 # 8. Просмотр результатов
-# Откройте http://localhost:5000
-# Логин: admin / secure_password_123
+# MLflow UI: http://localhost:5000 (admin / secure_password_123)
+# Airflow UI: http://localhost:8080 (admin / admin)
+# MinIO Console: http://localhost:9001 (minioadmin0 / minioadmin1230)
 ```
 
 ### 4.2 Полезные команды
@@ -876,10 +1101,17 @@ mlflow experiments search                # Список эксперименто
 mlflow runs list --experiment-id 1       # Запуски эксперимента
 mlflow models list                       # Зарегистрированные модели
 
-# Docker
-docker-compose ps                        # Статус контейнеров
+# Airflow
+# Веб-интерфейс: http://localhost:8080 (admin/admin)
+docker-compose logs -f airflow-webserver   # Логи веб-сервера
+docker-compose logs -f airflow-scheduler   # Логи планировщика
+docker-compose logs -f airflow-worker      # Логи воркера
+
+# Docker (полная инфраструктура)
+docker-compose ps                        # Статус всех контейнеров
 docker-compose logs -f mlflow            # Логи MLflow
-docker-compose restart mlflow nginx      # Перезапуск
+docker-compose restart airflow-webserver # Перезапуск Airflow UI
+docker-compose down && docker-compose up -d  # Полный перезапуск
 
 # DVC
 dvc status                               # Статус данных
@@ -893,7 +1125,7 @@ dvc push                                 # Отправка данных
 
 ### 5.1 Установка и настройка выбранного инструмента (Apache Airflow)
 
-**Выбранный инструмент оркестрации:** Apache Airflow 2.8.0+
+**Выбранный инструмент оркестрации:** Apache Airflow 2.8.1
 
 **Архитектура развертывания:**
 
@@ -914,23 +1146,44 @@ dvc push                                 # Отправка данных
 └─────────────┴─────────────┴─────────────┴─────────────┴────────┘
 ```
 
-**Установка и настройка через Docker Compose:**
+**Реализованная архитектура через Docker Compose:**
+
+Полный стек развёрнут в `docker-compose.yml` с 10 сервисами:
+
+| Сервис | Порт | Назначение |
+|--------|------|------------|
+| **airflow-webserver** | 8080 | Веб-интерфейс Airflow |
+| **airflow-scheduler** | — | Планировщик задач |
+| **airflow-worker** | — | Исполнитель задач (Celery) |
+| **airflow-init** | — | Инициализация БД и создание пользователя |
+| **postgres** | — | База метаданных Airflow |
+| **redis** | — | Брокер сообщений Celery |
+| **mlflow** | 5000 (через nginx) | Tracking server с аутентификацией |
+| **minio** | 9000, 9001 | S3-совместимое хранилище |
+| **nginx** | 5000 | Reverse proxy с Basic Auth для MLflow |
+| **train** | — | Контейнер для обучения моделей (профиль train) |
 
 ```dockerfile
-# docker/Dockerfile.airflow
-FROM apache/airflow:2.8.0-python3.11
+# docker/Dockerfile.airflow (фрагмент)
+FROM apache/airflow:2.8.1-python3.11
 
-USER root
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    && apt-get clean
+# Установка Python зависимостей проекта
+RUN pip install --no-cache-dir \
+    numpy>=2.0.0 \
+    pandas>=2.0.0 \
+    scikit-learn>=1.5.0 \
+    mlflow>=2.10.0 \
+    boto3>=1.34.0 \
+    loguru>=0.7.0 \
+    python-dotenv>=1.0.0 \
+    matplotlib>=3.8.0 \
+    apache-airflow-providers-celery>=3.5.0 \
+    apache-airflow-providers-redis>=3.5.0 \
+    apache-airflow-providers-postgres>=5.8.0 \
+    apache-airflow-providers-amazon>=8.0.0
 
-USER airflow
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Настройка Python paths
-ENV PYTHONPATH="${PYTHONPATH}:/opt/airflow/src"
+# Настройка Python paths для доступа к src/
+ENV PYTHONPATH="/opt/airflow:/opt/airflow/src:${PYTHONPATH}"
 ```
 
 **Docker Compose конфигурация:**
@@ -960,18 +1213,50 @@ x-airflow-common: &airflow-common
     - ./src:/opt/airflow/src
 ```
 
+**Веб-интерфейс Apache Airflow:**
+
+![Доступные DAGs](figures/2.png)
+
+*Рис. 3: Доступные DAGs экспериментов в Airflow UI*
+
+![DAG с экспериментом](figures/1.png)
+
+*Рис. 4: DAG Airflow с экспериментом boston_housing_experiments*
+
+![Docker-compose консоль](figures/3.png)
+
+*Рис. 5: Docker-compose консоль с запущенными сервисами*
+
+![Gantt диаграмма](figures/4.png)
+
+*Рис. 6: Gantt диаграмма с запущенными задачами в Airflow*
+
 ### 5.2 Создание workflow для ML пайплайна
+
+**Структура `airflow/dags/`:**
+
+```
+airflow/dags/
+├── boston_housing_simple.py       # Простой последовательный пайплайн
+├── boston_housing_experiments.py  # Параллельное обучение 19 моделей
+└── boston_housing_cached.py       # Пайплайн с кэшированием в MinIO
+```
 
 Реализовано **3 DAG** с различными паттернами оркестрации:
 
 #### DAG 1: boston_housing_simple
 
-**Назначение:** Простой последовательный пайплайн для быстрого прототипирования.
+**Назначение:** Простой последовательный пайплайн для быстрого прототипирования с одной моделью Random Forest.
 
 **Архитектура:**
 ```
 download_data → validate_data → train_model → evaluate_model → save_artifacts
 ```
+
+**Особенности:**
+- Обучение одной модели Random Forest
+- Сохранение результатов в локальные файлы
+- Простая последовательная архитектура без параллелизма
 
 **Конфигурация:**
 ```python
@@ -986,7 +1271,7 @@ download_data → validate_data → train_model → evaluate_model → save_arti
 
 #### DAG 2: boston_housing_experiments
 
-**Назначение:** Параллельное обучение 19 ML моделей с агрегацией результатов.
+**Назначение:** Параллельное обучение 19 ML моделей с агрегацией результатов и автоматическим логированием в MLflow.
 
 **Архитектура:**
 ```
@@ -1004,20 +1289,37 @@ download_data → validate_data → train_model → evaluate_model → save_arti
                   aggregate_results
                          │
                    generate_report
+                         │
+              ┌──────────┼──────────┐
+              │          │          │
+         Save to     Log to     Upload to
+         Local      MLflow      MinIO
 ```
 
-**Параллельное выполнение:**
+**Особенности:**
+- Максимум 8 параллельных задач (`max_active_tasks=8`)
+- Автоматическое логирование в MLflow с тегами
+- Сохранение артефактов в MinIO (отчёты, результаты, лучшая модель)
+- Генерация подробного Markdown отчёта
+
+**Параллельное выполнение через expand():**
 ```python
-# Линейные модели
+# Линейные модели (7 экспериментов)
 linear_results = train_single_model.expand(
     model_config=LINEAR_MODELS,
     data_info=[data_info] * len(LINEAR_MODELS),
 )
 
-# Древовидные модели  
+# Древовидные модели (9 экспериментов)
 tree_results = train_single_model.expand(
     model_config=TREE_MODELS,
     data_info=[data_info] * len(TREE_MODELS),
+)
+
+# Другие модели (3 эксперимента)
+other_results = train_single_model.expand(
+    model_config=OTHER_MODELS,
+    data_info=[data_info] * len(OTHER_MODELS),
 )
 ```
 
@@ -1047,12 +1349,12 @@ def check_cache_exists(data_path: str, **kwargs) -> bool:
 
 **Типы зависимостей:**
 
-|| Тип | Описание | Пример |
-||------|----------|---------|
-|| **Линейные** | Последовательное выполнение | `data >> validate >> train >> evaluate` |
-|| **Параллельные** | Независимое выполнение групп задач | `expand()` для множественного обучения |
-|| **Условные** | Выполнение зависит от результата предыдущих задач | `ShortCircuitOperator` для кэширования |
-|| **Trigger Rules** | Гибкая логика запуска | `none_failed_min_one_success` |
+| Тип | Описание | Пример |
+|------|----------|---------|
+| **Линейные** | Последовательное выполнение | `data >> validate >> train >> evaluate` |
+| **Параллельные** | Независимое выполнение групп задач | `expand()` для множественного обучения |
+| **Условные** | Выполнение зависит от результата предыдущих задач | `ShortCircuitOperator` для кэширования |
+| **Trigger Rules** | Гибкая логика запуска | `none_failed_min_one_success` |
 
 **Примеры настройки зависимостей:**
 
@@ -1076,9 +1378,26 @@ aggregated = aggregate_results(
 
 ### 5.4 Реализация кэширования и параллельного выполнения
 
+**Структура модуля `airflow/plugins/`:**
+
+```
+airflow/plugins/
+├── __init__.py
+└── minio_cache.py  # Система кэширования артефактов в MinIO
+```
+
 #### Система кэширования на базе MinIO
 
 **Модуль `airflow/plugins/minio_cache.py`:**
+
+Реализован класс `MinIOCache` и 3 вспомогательные функции для кэширования:
+
+| Компонент | Назначение |
+|-----------|------------|
+| `MinIOCache` | Класс для работы с кэшем в MinIO (проверка, загрузка, скачивание) |
+| `check_model_cache` | Функция для ShortCircuitOperator (проверка наличия модели в кэше) |
+| `get_cached_model` | Получение кэшированной модели из MinIO |
+| `save_model_to_cache` | Сохранение обученной модели в кэш с метаданными |
 
 ```python
 class MinIOCache:
@@ -1091,17 +1410,52 @@ class MinIOCache:
     - Загружать/скачивать артефакты
     """
 
+    def __init__(self, bucket_name: str = "airflow-cache"):
+        self.endpoint_url = os.environ.get("MLFLOW_S3_ENDPOINT_URL", "http://minio:9000")
+        self.access_key = os.environ.get("AWS_ACCESS_KEY_ID", "minioadmin")
+        self.secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", "minioadmin")
+        self.bucket_name = bucket_name
+        self.client = boto3.client("s3", endpoint_url=self.endpoint_url, ...)
+        self._ensure_bucket_exists()
+
+    def compute_file_hash(self, file_path: str) -> str:
+        """Вычисляет MD5 хэш файла."""
+        ...
+
+    def compute_params_hash(self, params: dict) -> str:
+        """Вычисляет хэш параметров."""
+        params_str = json.dumps(params, sort_keys=True)
+        return hashlib.md5(params_str.encode()).hexdigest()
+
     def get_cache_key(self, prefix: str, params: dict, data_hash: str = None) -> str:
         """
         Генерирует ключ кэша на основе параметров и хэша данных.
-
         Формат: prefix_params_hash_data_hash
-        Пример: "models/random_forest_a1b2c3d4_e5f6g7h8"
         """
         params_hash = self.compute_params_hash(params)
         if data_hash:
             return f"{prefix}_{params_hash}_{data_hash}"
         return f"{prefix}_{params_hash}"
+
+    def check_cache(self, prefix: str, params: dict, data_path: str = None) -> tuple[bool, str]:
+        """Проверяет наличие кэшированного результата."""
+        ...
+
+    def upload(self, local_path: str, key: str) -> str:
+        """Загружает файл в MinIO."""
+        ...
+
+    def download(self, key: str, local_path: str) -> str:
+        """Скачивает файл из MinIO."""
+        ...
+
+    def put_json(self, key: str, data: dict) -> str:
+        """Сохраняет JSON в MinIO."""
+        ...
+
+    def get_json(self, key: str) -> dict:
+        """Читает JSON из MinIO."""
+        ...
 ```
 
 **Интеграция с Airflow:**
@@ -1190,12 +1544,16 @@ def boston_housing_experiments_dag():
 
 **Основные модули конфигурации:**
 
-|| Модуль | Назначение | Содержание |
-||--------|------------|------------|
-|| `src/config.py` | Базовые пути проекта | Директории данных, путь к проекту, настройки логгера |
-|| `src/config/mlflow_config.py` | MLflow и MinIO | URI трекинга, эндпоинты S3, ключи доступа |
-|| `.env` | Секреты и переменные окружения | Пароли, ключи API, настройки БД |
-|| `docker-compose.yml` | Инфраструктурные настройки | Порты, volumes, переменные для контейнеров |
+| Модуль | Назначение | Содержание |
+|--------|------------|------------|
+| `src/config.py` | Базовые пути проекта | Директории данных, путь к проекту, настройки логгера |
+| `src/config/mlflow_config.py` | MLflow и MinIO | URI трекинга, эндпоинты S3, ключи доступа |
+| `src/tracking/decorators.py` | Декораторы MLflow | 5 декораторов для автоматического логирования |
+| `src/tracking/mlflow_tracker.py` | Контекстные менеджеры | 2 класса для управления экспериментами |
+| `src/tracking/utils.py` | Утилиты MLflow | 9 функций для работы с экспериментами |
+| `airflow/plugins/minio_cache.py` | Кэширование MinIO | Класс и функции для кэширования в S3 |
+| `.env` | Секреты и переменные окружения | Пароли, ключи API, настройки БД |
+| `docker-compose.yml` | Инфраструктурные настройки | Порты, volumes, переменные для контейнеров |
 
 ### 6.2 Создание конфигураций для разных алгоритмов
 
@@ -2076,6 +2434,12 @@ def validate_data_version() -> dict:
 | [`MLFLOW+DVC+MINIO.md`](../docs/guides/MLFLOW+DVC+MINIO.md) | Полное руководство по MLflow + DVC + MinIO |
 | [`MINIO+DVC.md`](../docs/guides/MINIO+DVC.md) | Настройка MinIO и DVC |
 | [`PRE-COMMIT.md`](../docs/guides/PRE-COMMIT.md) | Настройка pre-commit хуков |
+| [`DOCKER.md`](../docs/guides/DOCKER.md) | Руководство по Docker и контейнеризации |
+| [`ENV.md`](../docs/guides/ENV.md) | Настройка переменных окружения |
+| [`EXPERIMENTS.md`](../docs/guides/EXPERIMENTS.md) | Руководство по проведению экспериментов |
+| [`EXPERIMENTS-ADVANCED.md`](../docs/guides/EXPERIMENTS-ADVANCED.md) | Продвинутые техники экспериментов |
+| [`TRACKING-INTEGRATION.md`](../docs/guides/TRACKING-INTEGRATION.md) | Интеграция системы трекинга |
+| [`airflow_ml_pipeline.md`](../docs/guides/airflow_ml_pipeline.md) | Airflow ML пайплайны |
 
 ---
 
@@ -2085,20 +2449,20 @@ def validate_data_version() -> dict:
 
 ### Настройка выбранного инструмента трекинга
 
-1. **Установка и настройка MLflow**: Установлен MLflow 2.18.0+, развёрнуто облачное хранилище MinIO, создан проект и эксперименты, настроена двухуровневая аутентификация (Nginx Basic Auth + MLflow Auth + MinIO Access Keys)
+1. **Установка и настройка MLflow**: Установлен MLflow 3.7.0+ с поддержкой аутентификации, развёрнуто облачное хранилище MinIO, создан проект и эксперименты, настроена двухуровневая аутентификация (Nginx Basic Auth + MLflow Auth + MinIO Access Keys)
 
-2. **Проведение экспериментов**: Проведено 16 экспериментов с различными алгоритмами (Random Forest, Gradient Boosting, Ridge, Lasso, ElasticNet, SVR, KNN, Decision Tree, AdaBoost, Bagging, Extra Trees, Huber Regressor), настроено логирование метрик, параметров и артефактов, создана система сравнения экспериментов, настроена фильтрация и поиск
+2. **Проведение экспериментов**: Проведено 19 экспериментов с различными алгоритмами через Airflow DAG с параллельным выполнением (7 линейных моделей + 9 древовидных/ансамблевых + 3 других), настроено автоматическое логирование метрик, параметров и артефактов, создана система сравнения экспериментов, настроена фильтрация и поиск
 
-3. **Интеграция с кодом**: Интегрирован MLflow в Python код, созданы декораторы для автоматического логирования (`@mlflow_run`, `@log_params_decorator`, `@log_metrics_decorator`), настроены контекстные менеджеры (`MLflowExperimentTracker`), созданы утилиты для работы с экспериментами
+3. **Интеграция с кодом**: Интегрирован MLflow в Python код, созданы 5 декораторов для автоматического логирования (`@mlflow_run`, `@log_params_decorator`, `@log_metrics_decorator`, `@log_artifact_decorator`, `@timed_execution`), настроены контекстные менеджеры (`MLflowExperimentTracker`, `NestedRunTracker`), созданы 9 утилит для работы с экспериментами и система кэширования в MinIO
 
 ### Настройка выбранного инструмента оркестрации
 
-4. **Установка и настройка Apache Airflow**: Развернут Airflow 2.8.0+ через Docker Compose с CeleryExecutor, PostgreSQL, Redis, интегрирован с MLflow и MinIO
+4. **Установка и настройка Apache Airflow**: Развернут Airflow 2.8.1 через Docker Compose с CeleryExecutor, PostgreSQL, Redis, интегрирован с MLflow и MinIO
 
-5. **Создание workflow для ML пайплайна**: Реализовано 3 DAG:
-   - `boston_housing_simple`: простой последовательный пайплайн
-   - `boston_housing_experiments`: параллельное обучение 19 моделей с агрегацией
-   - `boston_housing_cached`: пайплайн с интеллектуальным кэшированием в MinIO
+5. **Создание workflow для ML пайплайна**: Реализовано 3 DAG с различными паттернами оркестрации:
+   - `boston_housing_simple`: простой последовательный пайплайн для быстрого прототипирования
+   - `boston_housing_experiments`: параллельное обучение 19 моделей (7 линейных + 9 древовидных + 3 других) с агрегацией результатов и автоматическим логированием в MLflow
+   - `boston_housing_cached`: пайплайн с интеллектуальным кэшированием в MinIO на основе хэшей данных и параметров
 
 6. **Настройка зависимостей между этапами**: Реализованы линейные, параллельные и условные зависимости, trigger rules для гибкой логики запуска
 
@@ -2126,24 +2490,26 @@ def validate_data_version() -> dict:
 
 ### Отчёт о проделанной работе
 
-16. **Создание отчёта**: Создан данный подробный отчёт в формате Markdown с описанием всех компонентов системы, добавлены схемы архитектуры и примеры кода, отчёт сохранён в Git репозитории
+16. **Создание отчёта**: Создан данный подробный отчёт в формате Markdown с описанием всех компонентов системы, добавлены схемы архитектуры и примеры кода, отчёт обновлён на основе актуальной структуры проекта и сохранён в Git репозитории
 
 **Используемый стек технологий:**
 
-|| Категория | Технология | Версия | Назначение |
-||-----------|------------|--------|------------|
-|| **Язык и пакеты** | Python + uv | 3.13 | Основной язык разработки, пакетный менеджер |
-|| **Оркестрация** | Apache Airflow | 2.8.0+ | Оркестрация ML пайплайнов, планировщик задач |
-|| **Трекинг** | MLflow | 2.18.0+ | Трекинг экспериментов, Model Registry |
-|| **Хранилище** | MinIO | latest | S3-совместимое хранилище артефактов и кэширование |
-|| **Конфигурации** | python-dotenv + модули | — | Управление конфигурациями через .env и Python |
-|| **Версионирование данных** | DVC | 3.64.2+ | Версионирование данных и моделей |
-|| **База данных** | PostgreSQL | 13 | Метаданные Airflow |
-|| **Брокер сообщений** | Redis | 7 | Celery broker для Airflow |
-|| **Контейнеризация** | Docker + Docker Compose | — | Развертывание инфраструктуры |
-|| **Обратный прокси** | Nginx | alpine | Аутентификация и маршрутизация |
-|| **ML библиотека** | scikit-learn | 1.3+ | Алгоритмы машинного обучения |
-|| **Логирование** | loguru | — | Структурированное логирование |
-|| **Качество кода** | Ruff + pre-commit | — | Линтинг и форматирование кода |
+| Категория | Технология | Версия | Назначение |
+|-----------|------------|--------|------------|
+| **Язык и пакеты** | Python + uv | 3.13 | Основной язык разработки, пакетный менеджер |
+| **Оркестрация** | Apache Airflow | 2.8.1 | Оркестрация ML пайплайнов, планировщик задач |
+| **Трекинг** | MLflow | 3.7.0+ | Трекинг экспериментов, Model Registry |
+| **Хранилище** | MinIO | latest | S3-совместимое хранилище артефактов и кэширование |
+| **Версионирование данных** | DVC + DVCLive | 3.64.2+ | Версионирование данных и моделей, метрики |
+| **База данных** | PostgreSQL | 15 | Метаданные Airflow |
+| **Брокер сообщений** | Redis | 7-alpine | Celery broker для Airflow |
+| **Контейнеризация** | Docker + Docker Compose | — | Развертывание инфраструктуры |
+| **Обратный прокси** | Nginx | alpine | Аутентификация и маршрутизация |
+| **ML библиотека** | scikit-learn | 1.7.2+ | 13 алгоритмов машинного обучения |
+| **Конфигурации** | python-dotenv + модули | 1.0.0+ | Управление конфигурациями через .env и Python |
+| **Логирование** | loguru | 0.7.3+ | Структурированное логирование |
+| **Качество кода** | Ruff + pre-commit | 0.14.6+ | Линтинг и форматирование кода |
+| **Безопасность** | detect-secrets | 1.5.0+ | Обнаружение секретов в коде |
+| **Утилиты** | click, pandas, numpy | 2.3.3+ | CLI, обработка данных, вычисления |
 
 ---
