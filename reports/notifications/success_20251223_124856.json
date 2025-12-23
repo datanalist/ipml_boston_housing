@@ -1,0 +1,19 @@
+{
+  "status": "success",
+  "notification_type": "pipeline_complete",
+  "timestamp": "2025-12-23T12:48:56.588708",
+  "source": "boston_housing_pipeline",
+  "pipeline": {
+    "name": "test_pipeline",
+    "run_id": "test_001",
+    "duration_seconds": 10.5,
+    "stages_completed": 3,
+    "stages_total": 3
+  },
+  "metrics": {
+    "r2": 0.6934499766790652,
+    "rmse": 101.86743371300226
+  },
+  "best_model": "random_forest",
+  "artifacts": []
+}

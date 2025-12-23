@@ -33,10 +33,30 @@ format:
 	uv run ruff check --fix
 	uv run ruff format
 
-## Run tests
+## Run all tests
 .PHONY: test
 test:
 	uv run pytest tests -v
+
+## Run reproducibility tests
+.PHONY: test-reproducibility
+test-reproducibility:
+	uv run pytest tests/test_reproducibility.py -v
+
+## Run integration tests
+.PHONY: test-integration
+test-integration:
+	uv run pytest tests/test_integration.py -v
+
+## Run pipeline tests
+.PHONY: test-pipeline
+test-pipeline:
+	uv run pytest tests/test_pipeline.py -v
+
+## Run tests with coverage
+.PHONY: test-coverage
+test-coverage:
+	uv run pytest tests -v --cov=src --cov-report=html --cov-report=term
 
 ## Set up Python interpreter environment
 .PHONY: create_environment
@@ -77,6 +97,36 @@ dvc-push:
 .PHONY: dvc-status
 dvc-status:
 	uv run dvc status
+
+#################################################################################
+# INTEGRATION & MONITORING                                                      #
+#################################################################################
+
+## Check all services health (MLflow, MinIO, DVC, Airflow)
+.PHONY: health-check
+health-check:
+	$(PYTHON_INTERPRETER) -m src.integration.health_check
+
+## Check services health with JSON output
+.PHONY: health-check-json
+health-check-json:
+	$(PYTHON_INTERPRETER) -m src.integration.health_check --json
+
+## Verify all integrations are working
+.PHONY: verify-integration
+verify-integration: health-check test-integration
+	@echo ""
+	@echo "═══════════════════════════════════════════════════════════════════════════════"
+	@echo "✅ ИНТЕГРАЦИЯ ПРОВЕРЕНА"
+	@echo "═══════════════════════════════════════════════════════════════════════════════"
+
+## Run full verification: health check + all tests
+.PHONY: verify-all
+verify-all: health-check test
+	@echo ""
+	@echo "═══════════════════════════════════════════════════════════════════════════════"
+	@echo "✅ ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ"
+	@echo "═══════════════════════════════════════════════════════════════════════════════"
 
 #################################################################################
 # DOCKER COMMANDS                                                               #
