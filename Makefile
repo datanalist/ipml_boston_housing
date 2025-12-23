@@ -169,6 +169,26 @@ docker-recreate:
 	docker network rm ipml_boston_housing_boston_housing_network 2>/dev/null || true
 	docker-compose up -d
 
+## Fix Airflow data permissions
+.PHONY: airflow-fix-permissions
+airflow-fix-permissions:
+	bash scripts/fix_airflow_data_permissions.sh
+
+## Trigger Airflow DAG
+.PHONY: airflow-trigger-dag
+airflow-trigger-dag:
+	docker exec boston_housing_airflow_scheduler airflow dags trigger boston_housing_experiments
+
+## List Airflow DAGs
+.PHONY: airflow-list-dags
+airflow-list-dags:
+	docker exec boston_housing_airflow_scheduler airflow dags list
+
+## Check Airflow DAG status
+.PHONY: airflow-dag-status
+airflow-dag-status:
+	docker exec boston_housing_airflow_scheduler airflow dags list-runs -d boston_housing_experiments
+
 #################################################################################
 # DATA ACQUISITION                                                              #
 #################################################################################

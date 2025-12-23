@@ -232,3 +232,8 @@ airflow-webserver.pid
 webserver_config.py
 unittests.cfg
 standalone_admin_password.txt
+
+# Debug scripts (temporary)
+debug_*.sh
+verify_*.sh
+check_*.sh

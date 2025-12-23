@@ -383,6 +383,16 @@ def boston_housing_experiments_dag():
         import pandas as pd
         from loguru import logger
 
+        # Преобразуем LazyXComAccess в списки
+        linear_results = list(linear_results) if linear_results else []
+        tree_results = list(tree_results) if tree_results else []
+        other_results = list(other_results) if other_results else []
+
+        # Преобразуем LazyXComAccess в списки
+        linear_results = list(linear_results) if linear_results else []
+        tree_results = list(tree_results) if tree_results else []
+        other_results = list(other_results) if other_results else []
+
         all_results = linear_results + tree_results + other_results
 
         logger.info(f"📊 Агрегация {len(all_results)} экспериментов")
