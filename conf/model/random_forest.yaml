@@ -1,0 +1,20 @@
+# Random Forest Regressor
+# @package model
+
+name: random_forest
+
+# Параметры ансамбля
+n_estimators: 100        # Количество деревьев (10-1000)
+max_depth: 10            # Максимальная глубина (1-100, null=без ограничений)
+
+# Параметры разбиения
+min_samples_split: 2     # Минимум образцов для разбиения (2-100)
+min_samples_leaf: 1      # Минимум образцов в листе (1-100)
+max_features: sqrt       # Признаки для разбиения: sqrt, log2, float (0-1)
+
+# Производительность
+n_jobs: -1               # Параллельные потоки (-1 = все ядра)
+bootstrap: true          # Использовать bootstrap выборки
+
+# Воспроизводимость
+random_state: 42

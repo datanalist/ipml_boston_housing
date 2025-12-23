@@ -1,0 +1,18 @@
+# Extra Trees Regressor (Extremely Randomized Trees)
+# @package model
+
+name: extra_trees
+
+# Параметры ансамбля
+n_estimators: 100        # Количество деревьев
+max_depth: 10            # Максимальная глубина
+
+# Параметры разбиения
+min_samples_split: 2     # Минимум образцов для разбиения
+min_samples_leaf: 1      # Минимум образцов в листе
+
+# Производительность
+n_jobs: -1               # Параллельные потоки
+
+# Воспроизводимость
+random_state: 42

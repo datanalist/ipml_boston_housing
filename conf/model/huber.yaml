@@ -1,0 +1,17 @@
+# Huber Regressor (робастная регрессия)
+# @package model
+
+name: huber
+
+# Параметры Huber loss
+epsilon: 1.35            # Порог выбросов (>1.0)
+
+# Регуляризация
+alpha: 0.0001            # Коэффициент L2 регуляризации
+
+# Оптимизация
+max_iter: 100            # Максимум итераций
+fit_intercept: true      # Вычислять свободный член
+
+# Примечание: HuberRegressor не имеет random_state
+random_state: null

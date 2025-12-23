@@ -216,6 +216,9 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# Hydra outputs (generated files)
+outputs/
+
 # Marimo
 marimo/_static/
 marimo/_lsp/

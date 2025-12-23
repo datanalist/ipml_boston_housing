@@ -1,0 +1,19 @@
+# Bagging Regressor
+# @package model
+
+name: bagging
+
+# Параметры ансамбля
+n_estimators: 10         # Количество базовых моделей (5-200)
+
+# Сэмплирование
+max_samples: 1.0         # Доля образцов для каждой модели
+max_features: 1.0        # Доля признаков для каждой модели
+bootstrap: true          # Bootstrap для образцов
+bootstrap_features: false # Bootstrap для признаков
+
+# Производительность
+n_jobs: -1               # Параллельные потоки
+
+# Воспроизводимость
+random_state: 42

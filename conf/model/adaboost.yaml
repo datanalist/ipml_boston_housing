@@ -1,0 +1,14 @@
+# AdaBoost Regressor
+# @package model
+
+name: adaboost
+
+# Параметры бустинга
+n_estimators: 50         # Количество слабых моделей (10-500)
+learning_rate: 1.0       # Вклад каждой модели (>0)
+
+# Функция потерь
+loss: linear             # linear, square, exponential
+
+# Воспроизводимость
+random_state: 42

@@ -1,0 +1,16 @@
+# Decision Tree Regressor
+# @package model
+
+name: decision_tree
+
+# Параметры дерева
+max_depth: 10            # Максимальная глубина (1-100, null=без ограничений)
+min_samples_split: 2     # Минимум образцов для разбиения
+min_samples_leaf: 1      # Минимум образцов в листе
+
+# Критерий качества
+criterion: squared_error # squared_error, friedman_mse, absolute_error, poisson
+splitter: best           # best, random
+
+# Воспроизводимость
+random_state: 42

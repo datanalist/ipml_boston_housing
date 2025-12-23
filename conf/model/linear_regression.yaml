@@ -1,0 +1,10 @@
+# Linear Regression (Ordinary Least Squares)
+# @package model
+
+name: linear_regression
+
+# Параметры модели
+fit_intercept: true      # Вычислять свободный член
+
+# Примечание: LinearRegression не имеет random_state
+random_state: null

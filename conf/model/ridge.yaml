@@ -1,0 +1,14 @@
+# Ridge Regression (L2 регуляризация)
+# @package model
+
+name: ridge
+
+# Регуляризация
+alpha: 1.0               # Коэффициент L2 регуляризации (0-1000)
+
+# Параметры модели
+fit_intercept: true      # Вычислять свободный член
+solver: auto             # auto, svd, cholesky, lsqr, sparse_cg, sag, saga
+
+# Воспроизводимость
+random_state: 42

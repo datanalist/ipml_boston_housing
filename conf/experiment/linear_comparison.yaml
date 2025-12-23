@@ -1,0 +1,25 @@
+# @package _global_
+#
+# Эксперимент для сравнения линейных моделей
+# Использование: uv run python src/modeling/train_hydra.py +experiment=linear_comparison
+
+defaults:
+  - override /model: ridge
+  - override /training: default
+
+name: linear_comparison
+description: "Сравнение линейных моделей регрессии"
+tags:
+  - linear
+  - comparison
+  - regularization
+
+# Параметры Ridge по умолчанию
+model:
+  alpha: 1.0
+
+# Параметры обучения
+training:
+  experiment_name: boston-housing-linear
+  cross_validation: true
+  cv_folds: 5
