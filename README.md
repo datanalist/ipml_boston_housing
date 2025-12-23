@@ -8,12 +8,12 @@
 
 ## 📚 Домашние задания
 
-| № ДЗ | Ветка | Отчёт | Описание |
-|------|-------|-------|----------|
-| 1 | [hw1](https://github.com/datanalist/ipml_boston_housing/tree/hw1) | [📄](reports/PROJECT_SETUP_REPORT.md) | Настройка проекта, структура, инструменты качества кода |
-| 2 | [hw2](https://github.com/datanalist/ipml_boston_housing/tree/hw2) | [📄](reports/HW2_VERSIONING_REPORT.md) | Версионирование данных и моделей: DVC, MinIO, DVCLive, Docker |
-| 3 | [hw3](https://github.com/datanalist/ipml_boston_housing/tree/hw3) | [📄](reports/LAB_REPORT.md) | Трекинг ML-экспериментов: MLflow, декораторы, контекстные менеджеры |
-| 4 | [hw4](https://github.com/datanalist/ipml_boston_housing/tree/hw4) | [📄](reports/LAB_REPORT.md) | Оркестрация ML-пайплайнов: Airflow, Hydra, Pydantic, интеграция систем |
+| № ДЗ | Ветка | Отчёт | Подробный отчёт | Описание |
+|------|-------|-------|-----------------|----------|
+| 1 | [hw1](https://github.com/datanalist/ipml_boston_housing/tree/hw1) | [📄](reports/PROJECT_SETUP_REPORT.md) | [📖](reports/LAB_REPORT.md) | Настройка проекта, структура, инструменты качества кода |
+| 2 | [hw2](https://github.com/datanalist/ipml_boston_housing/tree/hw2) | [📄](reports/HW2_VERSIONING_REPORT.md) | [📖](reports/LAB_REPORT.md) | Версионирование данных и моделей: DVC, MinIO, DVCLive, Docker |
+| 3 | [hw3](https://github.com/datanalist/ipml_boston_housing/tree/hw3) | [📄](reports/LAB_REPORT.md) | [📖](reports/LAB_REPORT.md) | Трекинг ML-экспериментов: MLflow, декораторы, контекстные менеджеры |
+| 4 | [hw4](https://github.com/datanalist/ipml_boston_housing/tree/hw4) | [📄](reports/LAB_REPORT.md) | [📖](reports/LAB_REPORT.md) | Оркестрация ML-пайплайнов: Airflow, Hydra, Pydantic, интеграция систем |
 
 ## 🛠️ Технологии
 
