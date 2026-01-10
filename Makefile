@@ -204,6 +204,46 @@ download-data-force:
 	$(PYTHON_INTERPRETER) scripts/download_data.py --force
 
 #################################################################################
+# DOCUMENTATION                                                                 #
+#################################################################################
+
+## Install documentation dependencies
+.PHONY: requirements-docs
+requirements-docs:
+	uv sync --group docs
+
+## Serve documentation locally with live reload
+.PHONY: docs-serve
+docs-serve:
+	uv run mkdocs serve
+
+## Build documentation
+.PHONY: docs-build
+docs-build:
+	uv run mkdocs build --clean --strict
+
+## Generate experiment reports
+.PHONY: generate-reports
+generate-reports:
+	@echo "📊 Generating experiment reports..."
+	$(PYTHON_INTERPRETER) scripts/generate_experiment_report.py
+	@echo "✅ Reports generated successfully!"
+
+## Generate reports and serve documentation
+.PHONY: docs-with-reports
+docs-with-reports: generate-reports docs-serve
+
+## Deploy documentation to GitHub Pages (manual)
+.PHONY: docs-deploy
+docs-deploy:
+	uv run mkdocs gh-deploy --force
+
+## Check environment setup
+.PHONY: check-env
+check-env:
+	$(PYTHON_INTERPRETER) scripts/check_environment.py
+
+#################################################################################
 # ML EXPERIMENTS                                                                #
 #################################################################################
 
