@@ -75,7 +75,7 @@ python scripts/check_environment.py
 - ✅ Доступность данных
 - ✅ Конфигурации
 
-[Подробнее о проверке окружения →](environment-check.md)
+Подробнее о проверке окружения см. в разделе [Воспроизводимость](../reproducibility/index.md).
 
 ---
 

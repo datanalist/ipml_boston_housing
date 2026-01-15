@@ -44,7 +44,9 @@ report_path = generator.generate_report(
 | Отчет | Дата | Описание |
 |-------|------|----------|
 | [Последние эксперименты](generated/latest_experiments.md) | Актуально | Автоматически обновляемый отчет |
-| [Сравнительный анализ](comparison.md) | - | Детальное сравнение моделей |
+
+!!! note "Сравнительный анализ"
+    Для сравнительного анализа моделей используйте MLflow UI (http://localhost:5000) или генерируйте отчёт командой `python scripts/generate_experiment_report.py`.
 
 ---
 
@@ -100,15 +102,16 @@ train_models >> generate_report
 
 ### Сравнение метрик
 
-![Пример сравнения метрик](plots/example_metrics.png)
+После генерации отчёта в папке `docs/reports/plots/` появятся графики:
 
-*Горизонтальные bar charts для всех основных метрик*
+- `metrics_comparison.png` — горизонтальные bar charts для всех основных метрик
+- `rmse_vs_r2.png` — scatter plot с цветовой кодировкой по типу модели
 
-### RMSE vs R² Scatter Plot
-
-![Пример scatter plot](plots/example_scatter.png)
-
-*Scatter plot с цветовой кодировкой по типу модели*
+!!! info "Генерация графиков"
+    Для создания визуализаций запустите:
+    ```bash
+    python scripts/generate_experiment_report.py
+    ```
 
 ---
 

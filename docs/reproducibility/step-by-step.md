@@ -595,7 +595,6 @@ python scripts/check_environment.py
 
 - [Воспроизводимость](index.md) — полная информация
 - [Troubleshooting](troubleshooting.md) — решение проблем
-- [Проверка зависимостей](dependencies.md) — детальная проверка
 - [Быстрый старт](../getting-started.md) — краткая инструкция
 
 ---

@@ -314,5 +314,5 @@ make download-data-force
 ## 🆘 Нужна помощь?
 
 - [Troubleshooting](../reproducibility/troubleshooting.md) — решение распространенных проблем
-- [Проверка зависимостей](../reproducibility/dependencies.md) — детальная проверка
+- [Воспроизводимость](../reproducibility/index.md) — детальная проверка
 - [GitHub Issues](https://github.com/yourusername/ipml_boston_housing/issues) — сообщите о проблеме
