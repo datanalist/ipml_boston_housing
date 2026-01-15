@@ -1,7 +1,7 @@
 site_name: Boston Housing Price Prediction
 site_description: 'ML проект с лучшими инженерными практиками Data Science'
 site_author: 'Макаров Михаил Владимирович'
-site_url: 'https://github.com/datanalist/ipml_boston_housing'
+site_url: 'https://datanalist.github.io/ipml_boston_housing'
 
 # Repository
 repo_name: 'ipml_boston_housing'
