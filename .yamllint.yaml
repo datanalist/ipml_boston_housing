@@ -1,0 +1,59 @@
+---
+extends: default
+
+rules:
+  # Длина строки - мягкое ограничение
+  line-length:
+    max: 120
+    level: warning
+    allow-non-breakable-words: true
+    allow-non-breakable-inline-mappings: true
+
+  # Отступы
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+
+  # Пустые строки
+  empty-lines:
+    max: 2
+    max-start: 0
+    max-end: 1
+
+  # Комментарии
+  comments:
+    require-starting-space: true
+    ignore-shebangs: true
+    min-spaces-from-content: 1
+
+  # Кавычки - разрешить любые
+  quoted-strings:
+    quote-type: any
+    required: false
+
+  # Truthy values
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no', 'on', 'off']
+    check-keys: false
+
+  # Document start/end markers
+  document-start: disable
+  document-end: disable
+
+  # Брейкеты и скобки
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+
+# Игнорировать некоторые файлы
+ignore: |
+  .venv/
+  node_modules/
+  minio_data/
+  mlflow_data/
+  dvc.yaml
+  .pre-commit-config.yaml

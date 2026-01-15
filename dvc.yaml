@@ -1,0 +1,17 @@
+params:
+- dvclive/params.yaml
+metrics:
+- dvclive/metrics.json
+plots:
+- dvclive/plots/metrics:
+    x: step
+artifacts:
+  random_forest:
+    path: data/models/random_forest_hydra.pkl
+    type: model
+  ridge:
+    path: data/models/ridge_hydra.pkl
+    type: model
+  gradient_boosting:
+    path: data/models/gradient_boosting_hydra.pkl
+    type: model

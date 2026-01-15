@@ -1,0 +1,19 @@
+# Конфигурация датасета Boston Housing
+# @package data
+
+# Пути к данным
+raw_path: data/raw/housing.csv
+processed_path: data/processed
+
+# Параметры датасета
+target_column: MEDV
+feature_columns: null  # null = все колонки кроме target
+
+# Параметры разделения
+test_size: 0.2
+random_state: 42
+shuffle: true
+
+# Формат данных
+separator: "\\s+"
+header: null  # Без заголовка

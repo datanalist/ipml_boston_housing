@@ -1,0 +1,30 @@
+# Главная конфигурация Hydra для Boston Housing ML проекта
+#
+# Использование:
+#   uv run python src/modeling/train_hydra.py                    # defaults
+#   uv run python src/modeling/train_hydra.py model=ridge        # смена модели
+#   uv run python src/modeling/train_hydra.py model.alpha=0.5    # override параметра
+
+defaults:
+  - model: random_forest      # Модель по умолчанию
+  - data: boston              # Датасет
+  - training: default         # Параметры обучения
+  - _self_                    # Переопределения из этого файла применяются последними
+
+# Метаданные эксперимента
+name: boston_housing_experiment
+description: "Прогнозирование цен на недвижимость в Бостоне"
+tags:
+  - regression
+  - boston-housing
+  - scikit-learn
+
+# Hydra настройки
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  sweep:
+    dir: multirun/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    subdir: ${hydra.job.num}
+  job:
+    chdir: false  # Не менять рабочую директорию

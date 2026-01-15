@@ -1,0 +1,23 @@
+# @package _global_
+#
+# Базовый эксперимент с настройками по умолчанию
+# Использование: uv run python src/modeling/train_hydra.py +experiment=baseline
+
+defaults:
+  - override /model: random_forest
+  - override /training: default
+
+name: baseline_experiment
+description: "Базовый эксперимент с Random Forest и параметрами по умолчанию"
+tags:
+  - baseline
+  - random_forest
+
+# Переопределения параметров модели
+model:
+  n_estimators: 100
+  max_depth: 10
+
+# Переопределения параметров обучения
+training:
+  experiment_name: boston-housing-baseline

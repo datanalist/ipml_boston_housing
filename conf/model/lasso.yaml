@@ -1,0 +1,15 @@
+# Lasso Regression (L1 регуляризация)
+# @package model
+
+name: lasso
+
+# Регуляризация
+alpha: 1.0               # Коэффициент L1 регуляризации (>0)
+
+# Оптимизация
+max_iter: 1000           # Максимум итераций (100-100000)
+tol: 0.0001              # Допуск остановки
+selection: cyclic        # Метод выбора: cyclic, random
+
+# Воспроизводимость
+random_state: 42

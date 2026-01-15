@@ -1,0 +1,21 @@
+# Конфигурация обучения по умолчанию
+# @package training
+
+# Параметры разделения данных
+test_size: 0.2
+random_state: 42
+shuffle: true
+
+# Кросс-валидация
+cross_validation: false
+cv_folds: 5
+
+# MLflow интеграция
+experiment_name: boston-housing
+run_name: null  # Автоматическая генерация
+log_model: true
+log_plots: true
+
+# DVCLive интеграция
+use_dvclive: true
+save_dvc_exp: true

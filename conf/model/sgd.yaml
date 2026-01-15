@@ -1,0 +1,20 @@
+# SGD Regressor (Stochastic Gradient Descent)
+# @package model
+
+name: sgd
+
+# Функция потерь
+loss: squared_error      # squared_error, huber, epsilon_insensitive
+
+# Регуляризация
+penalty: l2              # l2, l1, elasticnet, null
+alpha: 0.0001            # Коэффициент регуляризации
+
+# Оптимизация
+max_iter: 1000           # Максимум итераций
+tol: 0.001               # Допуск остановки
+learning_rate: invscaling  # constant, optimal, invscaling, adaptive
+eta0: 0.01               # Начальная скорость обучения
+
+# Воспроизводимость
+random_state: 42

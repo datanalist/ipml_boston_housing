@@ -1,0 +1,30 @@
+# @package _global_
+#
+# Настроенный эксперимент с оптимизированными параметрами
+# Использование: uv run python src/modeling/train_hydra.py +experiment=tuned
+
+defaults:
+  - override /model: random_forest
+  - override /training: default
+
+name: tuned_experiment
+description: "Эксперимент с оптимизированными гиперпараметрами Random Forest"
+tags:
+  - tuned
+  - optimized
+  - random_forest
+
+# Оптимизированные параметры модели (на основе grid search)
+model:
+  n_estimators: 200
+  max_depth: 15
+  min_samples_split: 5
+  min_samples_leaf: 2
+  max_features: sqrt
+
+# Параметры обучения
+training:
+  experiment_name: boston-housing-tuned
+  cross_validation: false
+  log_model: true
+  log_plots: true

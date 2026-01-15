@@ -1,0 +1,13 @@
+model_name: gradient_boosting
+model.random_state: 42
+model.n_estimators: 150
+model.learning_rate: 0.05
+model.max_depth: 3
+model.min_samples_split: 2
+model.min_samples_leaf: 1
+model.subsample: 1.0
+model.loss: squared_error
+test_size: 0.2
+random_state: 42
+n_samples: 506
+n_features: 13

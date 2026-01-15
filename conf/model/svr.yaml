@@ -1,0 +1,18 @@
+# Support Vector Regression
+# @package model
+
+name: svr
+
+# Ядро
+kernel: rbf              # linear, poly, rbf, sigmoid
+degree: 3                # Степень для poly ядра
+
+# Регуляризация
+C: 1.0                   # Параметр регуляризации (>0)
+epsilon: 0.1             # Ширина epsilon-tube
+
+# Параметры ядра
+gamma: scale             # scale, auto, или float
+
+# Примечание: SVR не имеет random_state
+random_state: null
