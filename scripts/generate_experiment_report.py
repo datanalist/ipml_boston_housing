@@ -94,33 +94,38 @@ class ExperimentReportGenerator:
         fig, axes = plt.subplots(2, 2, figsize=(15, 10))
         fig.suptitle("Сравнение метрик моделей", fontsize=16, fontweight="bold")
 
+        # Поддержка разных форматов колонок
+        rmse_col = "test_rmse" if "test_rmse" in df.columns else "rmse"
+        model_col = "model" if "model" in df.columns else "run_name"
+        r2_col = "test_r2" if "test_r2" in df.columns else "r2_score"
+        mae_col = "test_mae" if "test_mae" in df.columns else "mae"
+
         # RMSE
-        df_sorted = df.sort_values("test_rmse")
-        axes[0, 0].barh(df_sorted["model"], df_sorted["test_rmse"], color="skyblue")
+        df_sorted = df.sort_values(rmse_col)
+        axes[0, 0].barh(df_sorted[model_col], df_sorted[rmse_col], color="skyblue")
         axes[0, 0].set_xlabel("RMSE")
         axes[0, 0].set_title("Root Mean Squared Error (меньше - лучше)")
         axes[0, 0].grid(axis="x", alpha=0.3)
 
         # R² Score
-        df_sorted = df.sort_values("test_r2", ascending=False)
-        axes[0, 1].barh(df_sorted["model"], df_sorted["test_r2"], color="lightgreen")
+        df_sorted = df.sort_values(r2_col, ascending=False)
+        axes[0, 1].barh(df_sorted[model_col], df_sorted[r2_col], color="lightgreen")
         axes[0, 1].set_xlabel("R² Score")
         axes[0, 1].set_title("R² Score (больше - лучше)")
         axes[0, 1].grid(axis="x", alpha=0.3)
 
         # MAE
-        df_sorted = df.sort_values("test_mae")
-        axes[1, 0].barh(df_sorted["model"], df_sorted["test_mae"], color="lightcoral")
+        df_sorted = df.sort_values(mae_col)
+        axes[1, 0].barh(df_sorted[model_col], df_sorted[mae_col], color="lightcoral")
         axes[1, 0].set_xlabel("MAE")
         axes[1, 0].set_title("Mean Absolute Error (меньше - лучше)")
         axes[1, 0].grid(axis="x", alpha=0.3)
 
         # Training Time
-        if "training_time" in df.columns:
-            df_sorted = df.sort_values("training_time")
-            axes[1, 1].barh(
-                df_sorted["model"], df_sorted["training_time"], color="plum"
-            )
+        time_col = "training_time" if "training_time" in df.columns else "train_time"
+        if time_col in df.columns:
+            df_sorted = df.sort_values(time_col)
+            axes[1, 1].barh(df_sorted[model_col], df_sorted[time_col], color="plum")
             axes[1, 1].set_xlabel("Время (сек)")
             axes[1, 1].set_title("Время обучения")
             axes[1, 1].grid(axis="x", alpha=0.3)
@@ -158,6 +163,11 @@ class ExperimentReportGenerator:
         """
         plt.figure(figsize=(12, 8))
 
+        # Поддержка разных форматов колонок
+        rmse_col = "test_rmse" if "test_rmse" in df.columns else "rmse"
+        model_col = "model" if "model" in df.columns else "run_name"
+        r2_col = "test_r2" if "test_r2" in df.columns else "r2_score"
+
         # Определение категорий моделей
         linear_models = ["linear_regression", "ridge", "lasso", "elastic_net", "huber"]
         tree_models = [
@@ -168,7 +178,7 @@ class ExperimentReportGenerator:
         ]
 
         colors = []
-        for model in df["model"]:
+        for model in df[model_col]:
             if any(lm in model.lower() for lm in linear_models):
                 colors.append("blue")
             elif any(tm in model.lower() for tm in tree_models):
@@ -177,8 +187,8 @@ class ExperimentReportGenerator:
                 colors.append("orange")
 
         plt.scatter(
-            df["test_rmse"],
-            df["test_r2"],
+            df[rmse_col],
+            df[r2_col],
             c=colors,
             s=200,
             alpha=0.6,
@@ -188,8 +198,8 @@ class ExperimentReportGenerator:
         # Подписи точек
         for idx, row in df.iterrows():
             plt.annotate(
-                row["model"],
-                (row["test_rmse"], row["test_r2"]),
+                row[model_col],
+                (row[rmse_col], row[r2_col]),
                 xytext=(5, 5),
                 textcoords="offset points",
                 fontsize=9,
@@ -229,26 +239,33 @@ class ExperimentReportGenerator:
         Returns:
             Markdown строка с таблицей.
         """
+        # Поддержка разных форматов колонок
+        rmse_col = "test_rmse" if "test_rmse" in df.columns else "rmse"
+        model_col = "model" if "model" in df.columns else "run_name"
+        r2_col = "test_r2" if "test_r2" in df.columns else "r2_score"
+        mae_col = "test_mae" if "test_mae" in df.columns else "mae"
+        mape_col = "test_mape" if "test_mape" in df.columns else "mape"
+
         # Сортируем по R² (по убыванию)
-        df_sorted = df.sort_values("test_r2", ascending=False)
+        df_sorted = df.sort_values(r2_col, ascending=False)
 
         # Создаем Markdown таблицу
         table = "| Модель | RMSE ↓ | R² ↑ | MAE ↓ | MAPE (%) ↓ |\n"
         table += "|--------|--------|------|-------|------------|\n"
 
         for _, row in df_sorted.iterrows():
-            model_name = row["model"]
-            rmse = row["test_rmse"]
-            r2 = row["test_r2"]
-            mae = row["test_mae"]
-            mape = row.get("test_mape", 0) * 100 if "test_mape" in row else 0
+            model_name = row[model_col]
+            rmse = row[rmse_col]
+            r2 = row[r2_col]
+            mae = row[mae_col]
+            mape = row.get(mape_col, 0) * 100 if mape_col in row else 0
 
             # Выделяем лучшие значения
             rmse_str = (
-                f"**{rmse:.3f}**" if rmse == df["test_rmse"].min() else f"{rmse:.3f}"
+                f"**{rmse:.3f}**" if rmse == df[rmse_col].min() else f"{rmse:.3f}"
             )
-            r2_str = f"**{r2:.4f}**" if r2 == df["test_r2"].max() else f"{r2:.4f}"
-            mae_str = f"**{mae:.3f}**" if mae == df["test_mae"].min() else f"{mae:.3f}"
+            r2_str = f"**{r2:.4f}**" if r2 == df[r2_col].max() else f"{r2:.4f}"
+            mae_str = f"**{mae:.3f}**" if mae == df[mae_col].min() else f"{mae:.3f}"
             mape_str = f"{mape:.2f}"
 
             table += (
@@ -285,9 +302,15 @@ class ExperimentReportGenerator:
         # Создание таблицы сравнения
         comparison_table = self.generate_comparison_table(df)
 
+        # Поддержка разных форматов колонок
+        rmse_col = "test_rmse" if "test_rmse" in df.columns else "rmse"
+        model_col = "model" if "model" in df.columns else "run_name"
+        r2_col = "test_r2" if "test_r2" in df.columns else "r2_score"
+        mae_col = "test_mae" if "test_mae" in df.columns else "mae"
+
         # Статистика
-        best_model = df.loc[df["test_r2"].idxmax()]
-        worst_model = df.loc[df["test_r2"].idxmin()]
+        best_model = df.loc[df[r2_col].idxmax()]
+        worst_model = df.loc[df[r2_col].idxmin()]
 
         # Шаблон отчета
         template_str = """# {{ title }}
@@ -299,8 +322,8 @@ class ExperimentReportGenerator:
 ## 📊 Общая статистика
 
 - **Всего экспериментов:** {{ total_experiments }}
-- **Лучшая модель:** `{{ best_model.model }}` (R² = {{ "%.4f"|format(best_model.test_r2) }})
-- **Худшая модель:** `{{ worst_model.model }}` (R² = {{ "%.4f"|format(worst_model.test_r2) }})
+- **Лучшая модель:** `{{ best_model[model_col] }}` (R² = {{ "%.4f"|format(best_model[r2_col]) }})
+- **Худшая модель:** `{{ worst_model[model_col] }}` (R² = {{ "%.4f"|format(worst_model[r2_col]) }})
 
 ### Средние метрики
 
@@ -312,16 +335,16 @@ class ExperimentReportGenerator:
 
 ---
 
-## 🏆 Лучшая модель: {{ best_model.model }}
+## 🏆 Лучшая модель: {{ best_model[model_col] }}
 
-| Метрика | Train | Test |
-|---------|-------|------|
-| **RMSE** | {{ "%.3f"|format(best_model.train_rmse) }} | {{ "%.3f"|format(best_model.test_rmse) }} |
-| **R²** | {{ "%.4f"|format(best_model.train_r2) }} | {{ "%.4f"|format(best_model.test_r2) }} |
-| **MAE** | {{ "%.3f"|format(best_model.train_mae) }} | {{ "%.3f"|format(best_model.test_mae) }} |
+| Метрика | Значение |
+|---------|----------|
+| **RMSE** | {{ "%.3f"|format(best_model[rmse_col]) }} |
+| **R²** | {{ "%.4f"|format(best_model[r2_col]) }} |
+| **MAE** | {{ "%.3f"|format(best_model[mae_col]) }} |
 
-{% if best_model.get('training_time') %}
-**Время обучения:** {{ "%.2f"|format(best_model.training_time) }} сек
+{% if best_model.get('train_time') %}
+**Время обучения:** {{ "%.2f"|format(best_model.train_time) }} сек
 {% endif %}
 
 ---
@@ -346,15 +369,14 @@ class ExperimentReportGenerator:
 
 ## 💡 Выводы
 
-1. **Лучшая модель:** `{{ best_model.model }}` показала наилучший результат с R² = {{ "%.4f"|format(best_model.test_r2) }}
-2. **Разброс результатов:** Разница между лучшей и худшей моделью составляет {{ "%.4f"|format(best_model.test_r2 - worst_model.test_r2) }} по R²
-3. **Overfit check:** {% if best_model.train_r2 - best_model.test_r2 > 0.1 %}Наблюдается переобучение (разница train/test R² > 0.1){% else %}Переобучение минимально{% endif %}
+1. **Лучшая модель:** `{{ best_model[model_col] }}` показала наилучший результат с R² = {{ "%.4f"|format(best_model[r2_col]) }}
+2. **Разброс результатов:** Разница между лучшей и худшей моделью составляет {{ "%.4f"|format(best_model[r2_col] - worst_model[r2_col]) }} по R²
 
 ---
 
 ## 🔍 Рекомендации
 
-1. Для production рекомендуется использовать модель `{{ best_model.model }}`
+1. Для production рекомендуется использовать модель `{{ best_model[model_col] }}`
 2. Рассмотреть ансамблирование top-3 моделей для улучшения результатов
 3. Провести дополнительный hyperparameter tuning для лучших моделей
 
@@ -372,12 +394,16 @@ class ExperimentReportGenerator:
             total_experiments=len(df),
             best_model=best_model,
             worst_model=worst_model,
-            avg_rmse=df["test_rmse"].mean(),
-            avg_r2=df["test_r2"].mean(),
-            avg_mae=df["test_mae"].mean(),
+            avg_rmse=df[rmse_col].mean(),
+            avg_r2=df[r2_col].mean(),
+            avg_mae=df[mae_col].mean(),
             comparison_table=comparison_table,
             metrics_plot_name=metrics_plot.name,
             scatter_plot_name=scatter_plot.name,
+            model_col=model_col,
+            rmse_col=rmse_col,
+            r2_col=r2_col,
+            mae_col=mae_col,
         )
 
         # Сохранение отчета
