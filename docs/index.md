@@ -1,6 +1,6 @@
 # 🏠 Boston Housing Price Prediction
 
-<div align="center">
+<div align="center" markdown>
 
 ![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python&logoColor=white)
 ![Airflow](https://img.shields.io/badge/Airflow-2.10+-017CEE?logo=apacheairflow&logoColor=white)
