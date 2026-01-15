@@ -205,9 +205,5 @@ h1 code, h2 code, h3 code, h4 code {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* Подсветка синтаксиса - дополнительные стили */
-.highlight .hll { background-color: #49483e }
-.highlight .c { color: #75715e } /* Comment */
-.highlight .k { color: #66d9ef } /* Keyword */
-.highlight .n { color: #f8f8f2 } /* Name */
-.highlight .s { color: #e6db74 } /* String */
+/* Подсветка синтаксиса - используем встроенные стили MkDocs Material */
+/* Кастомные цвета удалены для корректного отображения в светлой и тёмной теме */
